@@ -1,6 +1,5 @@
-from .cli import app
+from ctx.cli import app
 
 
 if __name__ == "__main__":
     app()
-

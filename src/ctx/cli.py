@@ -12,6 +12,7 @@ from .errors import ConfigError
 from .models import Priority, ProjectStatus
 from .render import render_doctor, render_list, render_next, render_now, render_show
 from .store import WorkbenchStore, add_project, init_store, load_store, resolve_data_dir
+from .ui import serve_ui
 
 
 app = typer.Typer(
@@ -156,6 +157,31 @@ def doctor(ctx: typer.Context) -> None:
     render_doctor(console, report)
     if report.has_errors:
         raise typer.Exit(code=1)
+
+
+@app.command("ui")
+def ui(
+    ctx: typer.Context,
+    port: int = typer.Option(
+        0,
+        "--port",
+        help="Local port to bind. Use 0 to choose an available port automatically.",
+        min=0,
+        max=65535,
+    ),
+    no_open: bool = typer.Option(
+        False,
+        "--no-open",
+        help="Do not try to open the browser automatically.",
+    ),
+) -> None:
+    """Start the local web UI."""
+    state = _state(ctx)
+    try:
+        serve_ui(state.data_dir, port=port, open_browser=not no_open)
+    except ConfigError as exc:
+        _print_error(exc)
+        raise typer.Exit(code=1) from exc
 
 
 def _load_or_exit(ctx: typer.Context) -> WorkbenchStore:

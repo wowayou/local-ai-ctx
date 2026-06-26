@@ -19,6 +19,9 @@ dev = [
   "jsonschema>=4.0",
   "pytest>=8.0",
 ]
+release = [
+  "pyinstaller>=6.0",
+]
 
 [project.scripts]
 ctx = "ctx.cli:app"
