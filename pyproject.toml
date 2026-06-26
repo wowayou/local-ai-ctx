@@ -17,6 +17,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
   "jsonschema>=4.0",
+  "pillow>=10.0",
+  "playwright>=1.48",
   "pytest>=8.0",
 ]
 release = [

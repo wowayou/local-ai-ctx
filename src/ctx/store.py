@@ -1,17 +1,17 @@
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
+from .config import default_ledger_dir, resolve_data_dir_settings
 from .errors import ConfigError
 from .models import Priority, Project, ProjectStatus, Provider
 
 
-DEFAULT_LEDGER_DIR = Path.home() / ".local" / "share" / "ctx" / "ledger"
+DEFAULT_LEDGER_DIR = default_ledger_dir()
 
 
 @dataclass(frozen=True)
@@ -59,12 +59,10 @@ class EnsureProvidersResult:
 
 
 def resolve_data_dir(data_dir: Path | None = None) -> Path:
-    if data_dir is not None:
-        return data_dir.expanduser().resolve()
-    env_data_dir = os.environ.get("CTX_LEDGER_DIR")
-    if env_data_dir:
-        return Path(env_data_dir).expanduser().resolve()
-    return DEFAULT_LEDGER_DIR.expanduser().resolve()
+    settings = resolve_data_dir_settings(data_dir)
+    if settings.source == "default":
+        return DEFAULT_LEDGER_DIR.expanduser().resolve()
+    return settings.data_dir
 
 
 def init_store(data_dir: Path) -> InitResult:

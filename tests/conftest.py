@@ -9,3 +9,7 @@ import pytest
 def sample_ledger() -> Path:
     return Path(__file__).resolve().parents[1] / "samples" / "ledger"
 
+
+@pytest.fixture(autouse=True)
+def isolated_home(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))

@@ -8,6 +8,7 @@
 /handoffs/
 /cache/
 /reports/
+.ctx/config.yml
 
 # Python
 __pycache__/

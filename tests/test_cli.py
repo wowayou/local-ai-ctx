@@ -38,6 +38,66 @@ def test_cli_init_creates_empty_ledger(tmp_path: Path) -> None:
     assert (ledger / "providers.yml").read_text(encoding="utf-8") == "providers: {}\n"
 
 
+def test_cli_setup_writes_config_and_initializes_relative_choice(monkeypatch, tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+
+    result = runner.invoke(app, ["setup"], input="en\n2\n1\n", env={"HOME": str(home)})
+
+    assert result.exit_code == 0
+    assert "Saved ctx settings" in result.output
+    assert (home / ".config" / "ctx" / "config.yml").read_text(encoding="utf-8") == (
+        "language: en\n"
+        f"ledger_dir: {work / 'data' / 'ledger'}\n"
+    )
+    assert (work / "data" / "ledger" / "projects.yml").read_text(encoding="utf-8") == "projects: {}\n"
+    assert (work / "data" / "ledger" / "providers.yml").read_text(encoding="utf-8") == "providers: {}\n"
+
+
+def test_cli_setup_can_write_project_config(monkeypatch, tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    work = tmp_path / "work"
+    work.mkdir()
+    monkeypatch.chdir(work)
+
+    result = runner.invoke(app, ["setup"], input="zh\n2\n2\n", env={"HOME": str(home)})
+
+    assert result.exit_code == 0
+    assert "已保存设置" in result.output
+    assert (work / ".ctx" / "config.yml").read_text(encoding="utf-8") == (
+        "language: zh\n"
+        f"ledger_dir: {work / 'data' / 'ledger'}\n"
+    )
+    assert not (home / ".config" / "ctx" / "config.yml").exists()
+
+
+def test_cli_setup_copy_request_adopts_existing_target_ledger(monkeypatch, tmp_path: Path) -> None:
+    home = tmp_path / "home"
+    source = tmp_path / "source"
+    target = tmp_path / "target"
+    source.mkdir()
+    target.mkdir()
+    (source / "projects.yml").write_text("projects:\n  source: {}\n", encoding="utf-8")
+    (source / "providers.yml").write_text("providers: {}\n", encoding="utf-8")
+    (target / "projects.yml").write_text("projects:\n  keep: {}\n", encoding="utf-8")
+    (target / "providers.yml").write_text("providers:\n  keep-provider:\n    type: third_party\n", encoding="utf-8")
+    monkeypatch.chdir(tmp_path)
+
+    result = runner.invoke(
+        app,
+        ["--data-dir", str(source), "setup"],
+        input=f"en\n3\n{target}\n1\ny\n",
+        env={"HOME": str(home)},
+    )
+
+    assert result.exit_code == 0
+    assert "without copying or overwriting" in result.output
+    assert (target / "projects.yml").read_text(encoding="utf-8") == "projects:\n  keep: {}\n"
+    assert (target / "providers.yml").read_text(encoding="utf-8") == "providers:\n  keep-provider:\n    type: third_party\n"
+
+
 def test_cli_init_after_command_accepts_data_dir(tmp_path: Path) -> None:
     ledger = tmp_path / "ledger"
 

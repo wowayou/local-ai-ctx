@@ -12,4 +12,7 @@ echo "ok pytest"
 scripts/ui_smoke.sh
 echo "ok ui smoke"
 
+scripts/ui_browser_smoke.sh
+echo "ok ui browser smoke"
+
 echo "ok release check complete"

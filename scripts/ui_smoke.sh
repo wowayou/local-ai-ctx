@@ -51,9 +51,42 @@ URL="$(wait_for_url)"
 echo "ok server $URL"
 
 curl -fsS "$URL" -o "$HOME_HTML"
-grep -q "ctx 行动看板" "$HOME_HTML" || fail "homepage missing action board title"
+grep -q "行动工作台" "$HOME_HTML" || fail "homepage missing action workbench title"
+grep -q 'data-more-menu' "$HOME_HTML" || fail "homepage missing more menu"
+grep -q 'data-nav-item="action"' "$HOME_HTML" || fail "more menu missing action queue item"
+grep -q 'data-nav-item="table"' "$HOME_HTML" || fail "more menu missing library nav"
+grep -q 'data-nav-item="board"' "$HOME_HTML" || fail "more menu missing board nav"
+grep -q 'data-nav-item="doctor"' "$HOME_HTML" || fail "more menu missing doctor nav"
+grep -q 'data-view-panel="action"' "$HOME_HTML" || fail "homepage missing action view"
+grep -q 'data-action-queue' "$HOME_HTML" || fail "homepage missing action queue"
+if grep -q 'data-start-panel' "$HOME_HTML"; then
+  fail "homepage should not render start panel"
+fi
 grep -q 'id="project-search"' "$HOME_HTML" || fail "homepage missing search input"
+grep -q 'data-filter-menu' "$HOME_HTML" || fail "homepage missing filter menu"
 grep -q 'id="status-filter"' "$HOME_HTML" || fail "homepage missing status filter"
+grep -q 'id="priority-filter"' "$HOME_HTML" || fail "homepage missing priority filter"
+grep -q 'id="alert-filter"' "$HOME_HTML" || fail "homepage missing alert filter"
+grep -q 'data-summary-strip="compact"' "$HOME_HTML" || fail "homepage missing compact summary strip"
+if grep -q 'data-doctor-toggle' "$HOME_HTML"; then
+  fail "homepage should not render clickable doctor metric"
+fi
+grep -q 'class="action-table"' "$HOME_HTML" || fail "homepage missing action table"
+grep -q "Doctor 状态" "$HOME_HTML" || fail "homepage missing doctor metric"
+grep -q 'data-filter-field="status"' "$HOME_HTML" || fail "homepage missing status menu filter"
+grep -q 'data-filter-field="priority"' "$HOME_HTML" || fail "homepage missing priority menu filter"
+grep -q "日常" "$HOME_HTML" || fail "homepage missing daily status group"
+grep -q "风险" "$HOME_HTML" || fail "homepage missing risk status group"
+grep -q "结束" "$HOME_HTML" || fail "homepage missing done status group"
+if grep -q 'class="quick-form"' "$HOME_HTML"; then
+  fail "homepage should not render persistent quick form blocks"
+fi
+if grep -q "<select name='status' form=" "$HOME_HTML"; then
+  fail "homepage should not render inline status select controls"
+fi
+if grep -q "<select name='priority' form=" "$HOME_HTML"; then
+  fail "homepage should not render inline priority select controls"
+fi
 echo "ok homepage"
 
 curl -fsS -L -o /dev/null \
@@ -81,6 +114,17 @@ curl -fsS -L -o /dev/null \
   --data-urlencode "priority=high" \
   "$URL/projects/smoke-demo/quick"
 echo "ok quick update"
+
+curl -fsS "$URL" -o "$HOME_HTML"
+grep -q 'data-quick-field="status"' "$HOME_HTML" || fail "project row missing status pill menu"
+grep -q 'data-quick-field="priority"' "$HOME_HTML" || fail "project row missing priority pill menu"
+grep -q 'class="pill status-pill tone-doing"' "$HOME_HTML" || fail "project row missing status pill"
+grep -q 'class="pill priority-pill tone-high"' "$HOME_HTML" || fail "project row missing priority pill"
+grep -q "进行中" "$HOME_HTML" || fail "project row missing Chinese status label"
+grep -q "doing" "$HOME_HTML" || fail "project row missing status enum detail"
+grep -q "高" "$HOME_HTML" || fail "project row missing Chinese priority label"
+grep -q "high" "$HOME_HTML" || fail "project row missing priority enum detail"
+echo "ok pill controls"
 
 UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/local-ai-ctx-uv-cache}" uv run python - "$LEDGER_DIR" <<'PY'
 from pathlib import Path
@@ -118,4 +162,3 @@ echo "ok ctx now"
 
 UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/local-ai-ctx-uv-cache}" uv run ctx --data-dir "$LEDGER_DIR" doctor >/dev/null
 echo "ok ctx doctor"
-
