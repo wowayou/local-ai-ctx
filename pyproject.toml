@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-ai-ctx"
+version = "0.1.0"
+description = "Local-first context manager for AI-assisted development workflows."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0",
+  "rich>=13.0",
+  "typer>=0.12",
+]
+
+[project.optional-dependencies]
+dev = [
+  "jsonschema>=4.0",
+  "pytest>=8.0",
+]
+
+[project.scripts]
+ctx = "ctx.cli:app"
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,95 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local-ai-ctx/schemas/providers.schema.json",
+  "title": "ctx providers.yml",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["providers"],
+  "properties": {
+    "providers": {
+      "type": "object",
+      "description": "Provider ledger entries keyed by provider id.",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.+$": {
+          "$ref": "#/definitions/provider"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "provider": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "managed_by": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "$ref": "#/definitions/string_list"
+            }
+          ]
+        },
+        "scope": {
+          "$ref": "#/definitions/scope"
+        },
+        "not_for": {
+          "$ref": "#/definitions/scope"
+        },
+        "notes": {
+          "type": "string"
+        }
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "surfaces": {
+          "$ref": "#/definitions/surface_list"
+        },
+        "agents": {
+          "$ref": "#/definitions/agent_list"
+        }
+      }
+    },
+    "surface": {
+      "type": "string",
+      "enum": ["wsl", "host", "server", "remote", "unknown"]
+    },
+    "surface_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/surface"
+      }
+    },
+    "agent": {
+      "type": "string",
+      "enum": ["codex-cli", "claude-code", "codex-desktop", "manual", "other"]
+    },
+    "agent_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/agent"
+      }
+    },
+    "string_list": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

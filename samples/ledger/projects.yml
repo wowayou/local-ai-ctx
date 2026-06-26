@@ -1,0 +1,91 @@
+projects:
+  client-portal-demo:
+    name: client-portal-demo
+    status: action_required
+    priority: high
+    surfaces:
+      wsl:
+        path: /mnt/d/dev/client-portal-demo
+      host:
+        path: 'D:\dev\client-portal-demo'
+    agents:
+      - codex-cli
+      - codex-desktop
+    providers:
+      - official
+    repo:
+      remote: github
+      default_branch: main
+    next_action: Review the release checklist and confirm the next deploy window
+    rules:
+      - Do not add new scope until the release checklist is reviewed
+
+  docs-refresh-demo:
+    name: docs-refresh-demo
+    status: doing
+    priority: medium
+    surfaces:
+      wsl:
+        path: /mnt/d/dev/docs-refresh-demo
+      host:
+        path: 'D:\dev\docs-refresh-demo'
+    agents:
+      - codex-cli
+      - claude-code
+    providers:
+      - local-router
+      - official
+    repo:
+      remote: github
+      default_branch: main
+    next_action: Update the installation guide with the current command examples
+
+  sync-branch-demo:
+    name: sync-branch-demo
+    status: sync_risk
+    priority: medium
+    surfaces:
+      wsl:
+        path: /mnt/d/dev/sync-branch-demo
+    agents:
+      - codex-cli
+      - claude-code
+    providers:
+      - local-router
+      - lab-provider
+    repo:
+      remote: github
+      branch: handoff/demo-sync
+      known_risk: local branch is behind the default branch
+    next_action: Compare the handoff branch with the default branch before editing
+    rules:
+      - Do not force-push the default branch
+
+  infra-maintenance-demo:
+    name: infra-maintenance-demo
+    status: blocked
+    priority: medium
+    surfaces:
+      server:
+        path: /srv/demo/infra-maintenance
+    agents:
+      - codex-cli
+      - manual
+    providers:
+      - official
+    blockers:
+      - Waiting for the maintenance window
+    next_action: Confirm the maintenance window before changing service settings
+
+  backlog-triage-demo:
+    name: backlog-triage-demo
+    status: todo
+    priority: low
+    surfaces:
+      wsl:
+        path: /mnt/d/dev/backlog-triage-demo
+    agents:
+      - codex-cli
+    providers:
+      - official
+    next_action: Pick the oldest untriaged issue and write the decision note

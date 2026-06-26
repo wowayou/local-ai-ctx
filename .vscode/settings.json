@@ -1,0 +1,14 @@
+{
+  "yaml.schemas": {
+    "./schemas/projects.schema.json": [
+      "projects.yml",
+      "**/projects.yml",
+      "samples/ledger/projects.yml"
+    ],
+    "./schemas/providers.schema.json": [
+      "providers.yml",
+      "**/providers.yml",
+      "samples/ledger/providers.yml"
+    ]
+  }
+}

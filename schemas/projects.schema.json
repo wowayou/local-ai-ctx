@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://local-ai-ctx/schemas/projects.schema.json",
+  "title": "ctx projects.yml",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["projects"],
+  "properties": {
+    "projects": {
+      "type": "object",
+      "description": "Project ledger entries keyed by project id.",
+      "additionalProperties": false,
+      "patternProperties": {
+        "^.+$": {
+          "$ref": "#/definitions/project"
+        }
+      }
+    }
+  },
+  "definitions": {
+    "project": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "status", "next_action"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "status": {
+          "$ref": "#/definitions/status"
+        },
+        "priority": {
+          "$ref": "#/definitions/priority"
+        },
+        "surfaces": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "wsl": {
+              "$ref": "#/definitions/surface_config"
+            },
+            "host": {
+              "$ref": "#/definitions/surface_config"
+            },
+            "server": {
+              "$ref": "#/definitions/surface_config"
+            },
+            "remote": {
+              "$ref": "#/definitions/surface_config"
+            },
+            "unknown": {
+              "$ref": "#/definitions/surface_config"
+            }
+          }
+        },
+        "agents": {
+          "$ref": "#/definitions/agent_list"
+        },
+        "providers": {
+          "$ref": "#/definitions/string_list"
+        },
+        "repo": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "remote": {
+              "type": "string"
+            },
+            "default_branch": {
+              "type": "string"
+            },
+            "branch": {
+              "type": "string"
+            },
+            "known_risk": {
+              "type": "string"
+            }
+          }
+        },
+        "next_action": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blockers": {
+          "$ref": "#/definitions/string_list"
+        },
+        "risks": {
+          "$ref": "#/definitions/string_list"
+        },
+        "rules": {
+          "$ref": "#/definitions/string_list"
+        }
+      }
+    },
+    "surface_config": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "path": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "action_required",
+        "now",
+        "doing",
+        "sync_risk",
+        "blocked",
+        "todo",
+        "parked",
+        "done",
+        "archived"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "agent": {
+      "type": "string",
+      "enum": ["codex-cli", "claude-code", "codex-desktop", "manual", "other"]
+    },
+    "agent_list": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/agent"
+      }
+    },
+    "string_list": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    }
+  }
+}

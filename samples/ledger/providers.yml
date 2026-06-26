@@ -1,0 +1,31 @@
+providers:
+  local-router:
+    type: third_party
+    managed_by: local-provider-switcher
+    scope:
+      surfaces: [wsl]
+      agents: [codex-cli, claude-code]
+    not_for:
+      surfaces: [host]
+      agents: [codex-desktop]
+    notes: Manages local CLI agent provider routing only
+
+  lab-provider:
+    type: third_party
+    managed_by: local-provider-switcher
+    scope:
+      surfaces: [wsl]
+      agents: [codex-cli, claude-code]
+    not_for:
+      surfaces: [host]
+      agents: [codex-desktop]
+
+  official:
+    type: official
+    managed_by:
+      - login
+      - desktop-internal-config
+      - tool-native-config
+    scope:
+      surfaces: [host, wsl, server]
+      agents: [codex-cli, codex-desktop]

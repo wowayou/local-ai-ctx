@@ -1,0 +1,19 @@
+# local personal ledger
+/projects.yml
+/providers.yml
+/agents.yml
+/surfaces.yml
+/ctx.yml
+/ledger/
+/handoffs/
+/cache/
+/reports/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.egg-info/
+.venv/
+build/
+dist/
