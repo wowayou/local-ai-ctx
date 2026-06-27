@@ -171,6 +171,18 @@ STYLES = """\
       gap: var(--space-2);
     }
 
+    /* ── .popover — shared base for all floating menus ──
+       z-index layers: context-menu 30 | filter 35 | header-menu 40 | peek-layer 80  */
+    .popover {
+      position: absolute;
+      z-index: 30;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--panel);
+      box-shadow: var(--shadow-lg);
+      padding: var(--space-2);
+    }
+
     /* ── more menu ── */
     .more-menu {
       position: relative;
@@ -184,21 +196,18 @@ STYLES = """\
       color: var(--ink);
       font-weight: var(--fw-strong);
       cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: background-color 110ms;
     }
+    .more-menu > summary:hover { background: var(--bg-subtle); }
     .more-menu > summary::-webkit-details-marker { display: none; }
     .more-popover {
-      position: absolute;
       right: 0;
       top: calc(100% + var(--space-1));
       z-index: 40;
       display: grid;
       gap: var(--space-1);
       width: min(420px, calc(100vw - 32px));
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--panel);
-      box-shadow: var(--shadow-lg);
-      padding: var(--space-2);
     }
     .more-item {
       width: 100%;
@@ -247,13 +256,16 @@ STYLES = """\
       color: var(--ink);
       font-weight: var(--fw-strong);
       cursor: pointer;
+      border-radius: var(--radius-md);
+      transition: background-color 110ms;
     }
+    .settings-menu summary:hover { background: var(--bg-subtle); }
     .settings-menu summary::-webkit-details-marker { display: none; }
     .settings-menu form {
       position: absolute;
       right: 0;
       top: calc(100% + var(--space-1));
-      z-index: 20;
+      z-index: 40;
       width: min(420px, calc(100vw - 32px));
       border: 1px solid var(--line);
       border-radius: var(--radius-md);
@@ -526,22 +538,18 @@ STYLES = """\
       padding: 7px var(--space-3);
       font-weight: var(--fw-strong);
       cursor: pointer;
+      transition: background-color 110ms, border-color 110ms;
     }
+    .filter-drawer > summary:hover { background: var(--bg-subtle); border-color: var(--muted); }
     .filter-drawer > summary::-webkit-details-marker { display: none; }
     .filter-panel {
-      position: absolute;
       right: 0;
       top: calc(100% + var(--space-1));
       z-index: 35;
       display: grid;
       grid-template-columns: minmax(180px, 1fr) minmax(160px, 1fr);
-      gap: 10px;
+      gap: var(--space-2);
       width: min(470px, calc(100vw - 32px));
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--panel);
-      box-shadow: var(--shadow-lg);
-      padding: 10px;
     }
     .filter-panel .filter-toggle, .filter-panel #reset-filters { align-self: end; }
 
@@ -617,6 +625,7 @@ STYLES = """\
       color: var(--muted);
       font-size: var(--fs-xs);
       font-weight: var(--fw-strong);
+      transition: color 200ms;
     }
     .row-save-state.saving { color: var(--blue); }
     .row-save-state.saved { color: var(--ok); }
@@ -630,6 +639,7 @@ STYLES = """\
       font-size: var(--fs-xs);
       font-weight: var(--fw-strong);
     }
+    .undo-link:hover { text-decoration: underline; }
 
     /* ── choice menus / pills ── */
     .choice-menu { position: relative; min-width: 0; }
@@ -676,19 +686,12 @@ STYLES = """\
 
     /* ── menu popover ── */
     .menu-popover {
-      position: absolute;
-      z-index: 30;
       top: calc(100% + var(--space-1));
       left: 0;
       min-width: 220px;
       max-width: min(300px, calc(100vw - 24px));
       max-height: min(430px, calc(100vh - 120px));
       overflow: auto;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-md);
-      background: var(--panel);
-      box-shadow: var(--shadow-lg);
-      padding: 7px;
     }
     .filter-menu .menu-popover { min-width: 100%; }
     .menu-section-title {

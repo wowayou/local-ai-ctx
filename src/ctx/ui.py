@@ -481,7 +481,7 @@ def _render_home(
         <button type="button" class="btn btn--primary" id="new-project-toggle" data-panel-target="panel-create" aria-expanded="{'true' if create_feedback else 'false'}">{labels['new_project']}</button>
         <details class="more-menu" data-more-menu>
           <summary>{labels['more']}</summary>
-          <div class="more-popover">
+          <div class="popover more-popover">
             <button type="button" class="btn more-item is-active" data-nav-item="action">{labels['nav_action']}</button>
             <button type="button" class="btn more-item" data-nav-item="table">{labels['nav_library']}</button>
             <button type="button" class="btn more-item" data-nav-item="board">{labels['nav_board']}</button>
@@ -503,7 +503,7 @@ def _render_home(
         <label class="search-field"><span>{labels['search']}</span><input id="project-search" type="search" placeholder="{labels['search_placeholder']}"></label>
         <details class="filter-drawer" data-filter-menu>
           <summary>{labels['filters']}</summary>
-          <div class="filter-panel">
+          <div class="popover filter-panel">
             {_filter_menu('status', labels['status_filter'], labels['all_statuses'], language=language)}
             {_filter_menu('priority', labels['priority_filter'], labels['all_priorities'], language=language)}
             <label class="filter-toggle"><input id="alert-filter" type="checkbox"><span>{labels['alerts_only']}</span></label>
@@ -664,7 +664,7 @@ def _filter_menu(field: str, label: str, all_label: str, *, language: str) -> st
     <span data-current-label>{_e(all_label)}</span>
     <small data-current-detail>all</small>
   </button>
-  <div class="menu-popover" role="menu" hidden>
+  <div class="popover menu-popover" role="menu" hidden>
     {menu}
   </div>
 </div>
@@ -687,7 +687,7 @@ def _row_choice_control(field: str, project: Project, action: str, *, language: 
     <span data-current-label>{_e(label)}</span>
     <small data-current-detail>{_e(current.value)}</small>
   </button>
-  <div class="menu-popover" role="menu" hidden>
+  <div class="popover menu-popover" role="menu" hidden>
     {menu}
   </div>
 </div>
