@@ -587,6 +587,18 @@ def _compact_summary(projects: list[Project], report: Any, *, language: str = "z
         (labels["metric_doctor"], "alerts", counts["alerts"], doctor_class),
     ]
     parts = []
+    focus_statuses = {ProjectStatus.ACTION_REQUIRED, ProjectStatus.NOW, ProjectStatus.DOING}
+    focal = next((p for p in projects if p.status in focus_statuses), None)
+    if focal:
+        surface = _surface_summary(focal, language=language, missing="")
+        next_hint = focal.next_action[:80] + ("…" if len(focal.next_action) > 80 else "")
+        meta = (surface + " · " + next_hint) if surface else next_hint
+        parts.append(
+            f"<span class='summary-focus'>"
+            f"<strong>{_e(focal.name)}</strong>"
+            f"<small>{_e(meta)}</small>"
+            f"</span>"
+        )
     for label, key, count, extra_class in items:
         detail = doctor_note if key == "alerts" else ""
         class_attr = f"summary-readout {extra_class}".strip()
@@ -638,10 +650,12 @@ def _action_queue_item(project: Project, report: Any, *, language: str = "zh") -
     flag_count = len(flags)
     return f"""
 <article class="action-item project-record" data-action-record data-project-record data-project-id="{_e(project.id)}" data-status="{_e(project.status.value)}" data-priority="{_e(project.priority.value)}" data-alert="{alert_value}" data-search="{_e(summary_text)}">
-  <div class="action-main">
+  <div class="action-name">
     <button type="button" class="cell-open detail-open-trigger" data-panel-target="{_e(panel_id)}">
       <strong>{_e(project.name)}</strong>
     </button>
+  </div>
+  <div class="action-body">
     <button type="button" class="next-action-edit" data-next-action-display data-project-id="{_e(project.id)}" data-endpoint="{_e(quick_action)}">{_e(project.next_action)}</button>
     <span class="row-save-state" aria-live="polite"></span>
   </div>
@@ -649,7 +663,7 @@ def _action_queue_item(project: Project, report: Any, *, language: str = "zh") -
     {_row_choice_control("status", project, quick_action, language=language)}
     {_row_choice_control("priority", project, quick_action, language=language)}
     <span class="flag-count" data-flag-count>{labels['flag_count'].format(count=flag_count)}</span>
-    <button type="button" class="btn btn--icon detail-button" data-panel-target="{_e(panel_id)}" aria-label="{labels['details_edit']}" title="{labels['details_edit']}">...</button>
+    <button type="button" class="btn btn--icon detail-button" data-panel-target="{_e(panel_id)}" aria-label="{labels['details_edit']}" title="{labels['details_edit']}">···</button>
   </div>
 </article>
 """
@@ -1196,8 +1210,8 @@ def _project_form(
   <label>{labels['next_action']}<textarea name="next_action" required placeholder="{labels['next_placeholder']}"{_field_attrs('next_action', errors, first_error)}>{_e(next_action)}</textarea><small class="help">{labels['next_action_help']}</small>{_field_error('next_action', errors)}</label>
 """
     location_tools = f"""
-  <details class="advanced-group" {"open" if _group_has_errors(errors, {'surface', 'surface_path', 'agents', 'providers'}) else ""}>
-    <summary>{labels['group_location_tools']}</summary>
+  <div class="advanced-group">
+    <p class="advanced-group-title">{labels['group_location_tools']}</p>
     <div class="grid-two">
       <label>Surface{_select("surface", Surface, surface, include_blank=True)}<small class="help">{labels['surface_help']}</small>{_field_error('surface', errors)}</label>
       <label>{labels['surface_path']}<input name="surface_path" value="{_e(surface_path)}" placeholder="/mnt/d/work/project"><small class="help">{labels['surface_path_help']}</small>{_field_error('surface_path', errors)}</label>
@@ -1209,35 +1223,34 @@ def _project_form(
       {_field_error('agents', errors)}
     </fieldset>
     <label>Providers<textarea name="providers" placeholder="official&#10;third-party-provider">{_e(providers)}</textarea><small class="help">{labels['providers_help']}</small>{_field_error('providers', errors)}</label>
-  </details>
+  </div>
 """
     repo_fields = f"""
-  <details class="advanced-group" {"open" if _group_has_errors(errors, {'repo_remote', 'repo_default_branch', 'repo_branch', 'repo_known_risk'}) else ""}>
-    <summary>{labels['group_repo']}</summary>
+  <div class="advanced-group">
+    <p class="advanced-group-title">{labels['group_repo']}</p>
     <div class="grid-two">
       <label>Repo remote<input name="repo_remote" value="{_e(repo_remote)}" placeholder="git@example.com:team/project.git"><small class="help">{labels['repo_remote_help']}</small></label>
       <label>{labels['default_branch']}<input name="repo_default_branch" value="{_e(repo_default_branch)}" placeholder="main"><small class="help">{labels['default_branch_help']}</small></label>
       <label>Branch<input name="repo_branch" value="{_e(repo_branch)}" placeholder="feature/local-board"><small class="help">{labels['branch_help']}</small></label>
       <label>{labels['known_risk']}<input name="repo_known_risk" value="{_e(repo_known_risk)}" placeholder="{labels['risk_placeholder']}"><small class="help">{labels['known_risk_help']}</small></label>
     </div>
-  </details>
+  </div>
 """
     risk_rule_fields = f"""
-  <details class="advanced-group" {"open" if _group_has_errors(errors, {'blockers', 'risks', 'rules'}) else ""}>
-    <summary>{labels['group_risk_rules']}</summary>
+  <div class="advanced-group">
+    <p class="advanced-group-title">{labels['group_risk_rules']}</p>
     <label>{labels['blockers']}<textarea name="blockers" placeholder="{labels['one_per_line']}">{_e(blockers)}</textarea><small class="help">{labels['blockers_help']}</small></label>
     <label>{labels['risks']}<textarea name="risks" placeholder="{labels['one_per_line']}">{_e(risks)}</textarea><small class="help">{labels['risks_help']}</small></label>
     <label>Rules<textarea name="rules" placeholder="{labels['one_per_line']}">{_e(rules)}</textarea><small class="help">{labels['rules_help']}</small></label>
-  </details>
+  </div>
 """
     advanced_fields = f"""
-  <details class="more-fields" {"open" if advanced_open or feedback else ""}>
-    <summary>{labels['more_info'] if not is_edit else labels['advanced']}</summary>
+  <div class="more-fields">
     {"" if is_edit else status_priority}
     {location_tools}
     {repo_fields}
     {risk_rule_fields}
-  </details>
+  </div>
 """
     edit_status_priority = status_priority if is_edit else ""
     return f"""
@@ -1325,6 +1338,7 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
       const trigger = root.querySelector("[data-menu-trigger]");
       if (popover) popover.hidden = true;
       if (trigger) trigger.setAttribute("aria-expanded", "false");
+      root.classList.remove("opens-up");
     }}
   }};
 
@@ -1668,8 +1682,13 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
       if (!root || !popover) return;
       const willOpen = popover.hidden;
       closeMenus(root);
+      root.classList.remove("opens-up");
       popover.hidden = !willOpen;
       trigger.setAttribute("aria-expanded", String(willOpen));
+      if (willOpen) {{
+        const rect = popover.getBoundingClientRect();
+        if (rect.bottom > window.innerHeight - 8) root.classList.add("opens-up");
+      }}
     }});
   }}
 
