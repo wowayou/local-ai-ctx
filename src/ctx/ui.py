@@ -478,14 +478,14 @@ def _render_home(
         <p>{labels['ledger_label']}: {_e(str(data_dir))}</p>
       </div>
       <div class="header-actions">
-        <button type="button" id="new-project-toggle" data-panel-target="panel-create" aria-expanded="{'true' if create_feedback else 'false'}">{labels['new_project']}</button>
+        <button type="button" class="btn btn--primary" id="new-project-toggle" data-panel-target="panel-create" aria-expanded="{'true' if create_feedback else 'false'}">{labels['new_project']}</button>
         <details class="more-menu" data-more-menu>
           <summary>{labels['more']}</summary>
           <div class="more-popover">
-            <button type="button" class="more-item is-active" data-nav-item="action">{labels['nav_action']}</button>
-            <button type="button" class="more-item" data-nav-item="table">{labels['nav_library']}</button>
-            <button type="button" class="more-item" data-nav-item="board">{labels['nav_board']}</button>
-            <button type="button" class="more-item" data-nav-item="doctor">Doctor</button>
+            <button type="button" class="btn more-item is-active" data-nav-item="action">{labels['nav_action']}</button>
+            <button type="button" class="btn more-item" data-nav-item="table">{labels['nav_library']}</button>
+            <button type="button" class="btn more-item" data-nav-item="board">{labels['nav_board']}</button>
+            <button type="button" class="btn more-item" data-nav-item="doctor">Doctor</button>
             <details class="settings-menu" id="settings-menu">
               <summary>{labels['settings']}</summary>
               {_settings_form(data_dir, language=language, ledger_source=ledger_source)}
@@ -507,7 +507,7 @@ def _render_home(
             {_filter_menu('status', labels['status_filter'], labels['all_statuses'], language=language)}
             {_filter_menu('priority', labels['priority_filter'], labels['all_priorities'], language=language)}
             <label class="filter-toggle"><input id="alert-filter" type="checkbox"><span>{labels['alerts_only']}</span></label>
-            <button type="button" id="reset-filters" class="secondary">{labels['reset_filters']}</button>
+            <button type="button" id="reset-filters" class="btn btn--secondary">{labels['reset_filters']}</button>
           </div>
         </details>
       </section>
@@ -649,7 +649,7 @@ def _action_queue_item(project: Project, report: Any, *, language: str = "zh") -
     {_row_choice_control("status", project, quick_action, language=language)}
     {_row_choice_control("priority", project, quick_action, language=language)}
     <span class="flag-count" data-flag-count>{labels['flag_count'].format(count=flag_count)}</span>
-    <button type="button" class="icon-button detail-button" data-panel-target="{_e(panel_id)}" aria-label="{labels['details_edit']}" title="{labels['details_edit']}">...</button>
+    <button type="button" class="btn btn--icon detail-button" data-panel-target="{_e(panel_id)}" aria-label="{labels['details_edit']}" title="{labels['details_edit']}">...</button>
   </div>
 </article>
 """
@@ -660,7 +660,7 @@ def _filter_menu(field: str, label: str, all_label: str, *, language: str) -> st
     return f"""
 <div class="filter-menu choice-menu" data-menu-root data-filter-field="{_e(field)}">
   <span class="filter-label">{_e(label)}</span>
-  <button type="button" id="{_e(field)}-filter" class="menu-trigger filter-trigger" data-menu-trigger data-value="" aria-haspopup="menu" aria-expanded="false">
+  <button type="button" id="{_e(field)}-filter" class="btn menu-trigger filter-trigger" data-menu-trigger data-value="" aria-haspopup="menu" aria-expanded="false">
     <span data-current-label>{_e(all_label)}</span>
     <small data-current-detail>all</small>
   </button>
@@ -747,7 +747,7 @@ def _menu_option(value: str, label: str, detail: str, selected: bool, *, tone: s
     checked = "true" if selected else "false"
     selected_class = " is-selected" if selected else ""
     return (
-        f"<button type='button' class='menu-option tone-{_e(tone)}{selected_class}' role='menuitemradio' "
+        f"<button type='button' class='btn menu-option tone-{_e(tone)}{selected_class}' role='menuitemradio' "
         f"aria-checked='{checked}' data-menu-option data-value='{_e(value)}' "
         f"data-label='{_e(label)}' data-detail='{_e(detail)}' data-tone='{_e(tone)}'>"
         f"<span>{_e(label)}</span><small>{_e(detail)}</small>"
@@ -900,7 +900,7 @@ def _create_peek_panel(*, language: str = "zh", feedback: FormFeedback | None = 
 <aside id="panel-create" class="peek-panel" data-peek-panel {open_attr}>
   <div class="peek-head">
     <h2>{labels['new_project']}</h2>
-    <button type="button" class="icon-button" data-panel-close aria-label="{labels['close']}">x</button>
+    <button type="button" class="btn btn--icon" data-panel-close aria-label="{labels['close']}">x</button>
   </div>
   {_minimal_project_form(language=language, feedback=feedback)}
 </aside>
@@ -935,7 +935,7 @@ def _project_peek_panel(
       <h2>{_e(project.name)}</h2>
       <p>{_e(project.id)}</p>
     </div>
-    <button type="button" class="icon-button" data-panel-close aria-label="{labels['close']}">x</button>
+    <button type="button" class="btn btn--icon" data-panel-close aria-label="{labels['close']}">x</button>
   </div>
   {_project_form(action=action, project=project, advanced_open=advanced_open, language=language, feedback=feedback)}
 </aside>
@@ -969,7 +969,7 @@ def _minimal_project_form(*, language: str = "zh", feedback: FormFeedback | None
 <form class="create-form" method="post" action="/projects">
   <label>{labels['name']}<input name="name" value="{_e(name)}" placeholder="{labels['name_placeholder']}" required{_field_attrs('name', errors, first_error)}>{_field_error('name', errors)}</label>
   <label>{labels['next_action']}<textarea name="next_action" required placeholder="{labels['next_placeholder']}"{_field_attrs('next_action', errors, first_error)}>{_e(next_action)}</textarea>{_field_error('next_action', errors)}</label>
-  <button type="submit">{labels['add']}</button>
+  <button type="submit" class="btn btn--primary">{labels['add']}</button>
 </form>
 """
 
@@ -1050,7 +1050,7 @@ def _settings_form(data_dir: Path, *, language: str, ledger_source: str) -> str:
   <label>{labels['language']}<select name="language">{language_options}</select></label>
   <label class="checkline"><input type="checkbox" name="copy_current_ledger" value="1">{labels['copy_ledger']}</label>
   {override_note}
-  <button type="submit">{labels['save_settings']}</button>
+  <button type="submit" class="btn btn--primary">{labels['save_settings']}</button>
 </form>
 """
 
@@ -1245,7 +1245,7 @@ def _project_form(
   {base_fields}
   {edit_status_priority}
   {advanced_fields}
-  <button type="submit">{submit}</button>
+  <button type="submit" class="btn btn--primary">{submit}</button>
 </form>
 """
 

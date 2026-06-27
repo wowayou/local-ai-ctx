@@ -214,6 +214,7 @@ STYLES = """\
       background: var(--accent-soft);
       color: var(--accent);
     }
+    .more-item:active { background: var(--accent-line); }
 
     /* ── mobile nav ── */
     .mobile-nav { display: none; }
@@ -659,6 +660,8 @@ STYLES = """\
       line-height: 1.1;
     }
     .pill[disabled] { opacity: 0.62; cursor: wait; }
+    .pill { transition: filter 100ms; }
+    .pill:hover:not([disabled]) { filter: brightness(0.95); }
 
     /* ── tone classes: status & priority chips ── */
     .tone-action { color: var(--s-action-fg); background: var(--s-action-bg); border-color: var(--s-action-line); }
@@ -711,6 +714,7 @@ STYLES = """\
       cursor: pointer;
     }
     .menu-option:hover, .menu-option.is-selected { background: var(--bg-subtle); }
+    .menu-option:active { background: var(--accent-soft); color: var(--accent); }
     .menu-option.is-selected::before {
       content: "";
       width: 3px;
@@ -871,17 +875,6 @@ STYLES = """\
       margin-bottom: var(--space-3);
     }
     .peek-head p { color: var(--muted); margin-top: 3px; }
-    .icon-button {
-      width: 32px;
-      height: 32px;
-      display: inline-grid;
-      place-items: center;
-      border: 1px solid var(--line);
-      border-radius: var(--radius-sm);
-      background: var(--bg-subtle);
-      color: var(--ink);
-      padding: 0;
-    }
 
     /* ── property list ── */
     .property-list {
@@ -923,7 +916,59 @@ STYLES = """\
     .field-error { color: var(--err); font-weight: var(--fw-strong); font-size: var(--fs-sm); }
     .help { font-size: var(--fs-xs); font-weight: var(--fw-medium); }
 
-    /* ── buttons ── */
+    /* ── btn component system ── */
+    /* Base: minimal shared token — focus ring + disabled state */
+    .btn {
+      font: inherit;
+      font-weight: var(--fw-strong);
+      cursor: pointer;
+      transition: background-color 110ms, color 110ms, border-color 110ms;
+    }
+    .btn:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .btn:disabled, .btn[disabled] {
+      opacity: 0.48;
+      cursor: not-allowed;
+    }
+    /* primary — accent fill */
+    .btn--primary {
+      justify-self: start;
+      border: 0;
+      border-radius: var(--radius-sm);
+      padding: var(--space-2) var(--space-3);
+      background: var(--accent);
+      color: var(--accent-fg);
+      font-weight: var(--fw-strong);
+    }
+    .btn--primary:hover { background: #1f5250; }
+    .btn--primary:active { background: #174340; }
+    /* secondary — neutral fill */
+    .btn--secondary {
+      justify-self: start;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: var(--space-2) var(--space-3);
+      background: var(--bg-subtle);
+      color: var(--ink);
+      font-weight: var(--fw-strong);
+    }
+    .btn--secondary:hover { background: var(--line-soft); }
+    /* icon — square 32×32 */
+    .btn--icon, .icon-button {
+      width: 32px;
+      height: 32px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: var(--bg-subtle);
+      color: var(--ink);
+      padding: 0;
+    }
+    .btn--icon:hover, .icon-button:hover { background: var(--line-soft); border-color: var(--muted); }
+    /* ── legacy bare button defaults (submit buttons, unclassed elements) ── */
     button {
       justify-self: start;
       border: 0;
@@ -934,12 +979,18 @@ STYLES = """\
       font: inherit;
       font-weight: var(--fw-strong);
       cursor: pointer;
+      transition: background-color 110ms;
     }
+    button:hover { background: #1f5250; }
+    button:active { background: #174340; }
+    button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    button:disabled, button[disabled] { opacity: 0.48; cursor: not-allowed; }
     button.secondary {
       background: var(--bg-subtle);
       color: var(--ink);
       border: 1px solid var(--line);
     }
+    button.secondary:hover { background: var(--line-soft); }
 
     /* ── advanced form sections ── */
     .more-fields { border-top: 1px solid var(--line); padding-top: 10px; }
