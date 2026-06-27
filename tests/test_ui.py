@@ -33,29 +33,21 @@ def test_ui_server_initializes_missing_ledger(tmp_path: Path) -> None:
     assert 'class="side-nav"' not in body
     assert 'class="mobile-nav"' not in body
     assert 'data-more-menu' in body
-    assert 'data-filter-menu' in body
     assert 'data-nav-item="action"' in body
-    assert 'data-nav-item="table"' in body
-    assert 'data-nav-item="board"' in body
     assert 'data-nav-item="doctor"' in body
-    assert 'id="project-search"' in body
-    assert 'id="status-filter"' in body
-    assert 'id="priority-filter"' in body
-    assert 'id="alert-filter"' in body
-    assert "需行动" in body
-    assert "进行中" in body
-    assert "阻塞 / 同步风险" in body
-    assert "待办" in body
-    assert "Doctor 状态" in body
-    assert 'data-summary-strip="compact"' in body
+    assert 'data-nav-item="table"' not in body
+    assert 'data-nav-item="board"' not in body
+    assert 'data-filter-menu' not in body
+    assert 'id="project-search"' not in body
+    assert 'data-summary-strip' not in body
     assert "data-doctor-toggle" not in body
     assert 'data-view-panel="action"' in body
     assert "行动队列" in body
     assert 'data-action-queue' in body
     assert "情境起步" not in body
     assert 'data-start-panel' not in body
-    assert "项目库" in body
-    assert "还没有项目。" in body
+    assert "项目库" not in body
+    assert "还没有项目。" not in body
     assert 'data-peek-layer' in body
     assert 'id="panel-create"' in body
     assert 'class="quick-form"' not in body
@@ -93,45 +85,31 @@ def test_ui_homepage_renders_action_board_controls_and_action_list(tmp_path: Pat
         body = _get(url)
 
     assert "行动工作台" in body
-    assert "按名称、下一步、provider、repo 搜索" in body
-    assert "全部状态" in body
-    assert "全部优先级" in body
-    assert "仅看警示" in body
     assert "设置 / Settings" in body
     assert "当前运行 ledger" in body
     assert "未来默认 ledger" in body
     assert "设置保存位置" in body
     assert 'data-more-menu' in body
-    assert 'data-filter-menu' in body
-    assert 'data-summary-strip="compact"' in body
+    assert 'data-filter-menu' not in body
+    assert 'data-summary-strip' not in body
     assert "行动队列" in body
-    assert "项目库" in body
+    assert "项目库" not in body
     assert 'class="action-item project-record"' in body
     assert 'data-action-record' in body
     assert 'class="flag-count"' in body
-    assert "<th>项目</th>" in body
-    assert "<th>下一步</th>" in body
-    assert "<th>状态</th>" in body
-    assert "<th>优先级</th>" in body
-    assert "<th>标记</th>" in body
-    assert "<th>操作</th>" not in body
     assert "位置与工具" in body
     assert "风险与规则" in body
     assert "ctx.projectView" not in body
-    assert "project-rowgroup" in body
-    assert "kanban-board" in body
-    assert 'data-view-panel="board"' in body
-    assert 'data-project-card' in body
-    assert '<article class="board-card project-record" draggable="true"' not in body
-    assert 'data-drag-handle draggable="true"' not in body
-    assert 'data-drag-handle aria-label="拖动以移动状态"' in body
-    assert 'data-dropzone="doing"' in body
+    assert "project-rowgroup" not in body
+    assert "kanban-board" not in body
+    assert 'data-view-panel="board"' not in body
+    assert 'data-project-card' not in body
     assert 'data-panel-target="panel-demo"' in body
     assert 'class="peek-panel"' in body
     assert 'data-next-action-display' in body
-    assert "action-table" in body
-    assert "row-update-form" in body
-    assert 'id="quick-demo"' in body
+    assert "action-table" not in body
+    assert "row-update-form" not in body
+    assert 'id="quick-demo"' not in body
     assert 'data-quick-field="status"' in body
     assert 'data-quick-field="priority"' in body
     assert 'class="pill status-pill tone-doing"' in body
@@ -159,10 +137,8 @@ def test_ui_homepage_renders_action_board_controls_and_action_list(tmp_path: Pat
     assert 'class=\'property-list\'' not in body
     assert 'class="more-fields"' in body
     assert 'class="quick-form"' not in body
-    assert "search.addEventListener(\"input\"" in body
     assert "fetch(root.dataset.endpoint" in body
     assert "UI_TEXT.undo" in body
-    assert "record.hidden" in body
 
 
 def test_ui_homepage_renders_action_flags(tmp_path: Path) -> None:
@@ -193,11 +169,11 @@ def test_ui_homepage_renders_action_flags(tmp_path: Path) -> None:
         body = _get(url)
 
     assert "缺位置" in body
-    assert "缺 Provider" in body
+    assert "缺 provider" in body
     assert "阻塞" in body
     assert "风险" in body
-    assert "Doctor 错误 1" in body
-    assert "Doctor 警告" in body
+    assert "doctor 错误 1" in body
+    assert "doctor 警告" in body
     assert 'data-alert="1"' in body
 
 
@@ -359,7 +335,6 @@ def test_web_quick_update_status_priority_preserves_project_fields(tmp_path: Pat
     assert payload["project"]["priority"]["value"] == "high"
     assert payload["project"]["priority"]["label"] == "高"
     assert "flagsHtml" in payload["project"]
-    assert "metrics" in payload
 
 
 def test_web_quick_update_json_reports_errors(tmp_path: Path) -> None:

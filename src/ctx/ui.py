@@ -48,13 +48,6 @@ STATUS_GROUPS = [
     ("风险", "Risk", (ProjectStatus.SYNC_RISK, ProjectStatus.BLOCKED, ProjectStatus.PARKED)),
     ("结束", "Done", (ProjectStatus.DONE, ProjectStatus.ARCHIVED)),
 ]
-QUICK_STATUSES = (
-    ProjectStatus.TODO,
-    ProjectStatus.DOING,
-    ProjectStatus.ACTION_REQUIRED,
-    ProjectStatus.BLOCKED,
-    ProjectStatus.PARKED,
-)
 STATUS_META = {
     ProjectStatus.ACTION_REQUIRED: {"zh": "需行动", "en": "Action needed", "tone": "action"},
     ProjectStatus.NOW: {"zh": "现在", "en": "Now", "tone": "now"},
@@ -354,7 +347,6 @@ def _quick_update_project(data_dir: Path, project_id: str, form: dict[str, list[
 
 def _quick_update_payload(data_dir: Path, project: Project, *, language: str, message: str) -> dict[str, Any]:
     report = run_doctor(data_dir)
-    projects = sort_projects(list(load_store(data_dir).projects.values()))
     flags = _project_flags(project, report, language=language)
     return {
         "ok": True,
@@ -367,11 +359,9 @@ def _quick_update_payload(data_dir: Path, project: Project, *, language: str, me
             "priority": _choice_payload(project.priority, language=language),
             "alert": bool(flags),
             "flagCount": len(flags),
-            "flagCountLabel": _labels(language)["flag_count"].format(count=len(flags)),
             "flagsHtml": _flag_badges(flags, language=language),
             "search": _project_search_text(project, flags, language=language),
         },
-        "metrics": _metric_counts(projects, report, language=language),
     }
 
 
@@ -436,17 +426,6 @@ def _render_home(
 
     edit_feedbacks = edit_feedbacks or {}
     action_queue = _action_queue(projects, report, language=language)
-    project_rows = "".join(
-        _project_table_body(project, report, language=language, feedback=edit_feedbacks.get(project.id))
-        for project in projects
-    )
-    if not project_rows:
-        project_rows = (
-            "<tbody><tr class='empty-row'>"
-            f"<td colspan='5'>{labels['empty_projects']}</td>"
-            "</tr></tbody>"
-        )
-    board_columns = _project_board(projects, report, language=language)
     panels = "".join(
         _project_peek_panel(project, report, language=language, feedback=edit_feedbacks.get(project.id))
         for project in projects
@@ -474,8 +453,7 @@ def _render_home(
   <div class="workbench">
     <header class="app-header">
       <div class="header-copy">
-        <h1>{labels['workbench_title']}</h1>
-        <p>{labels['ledger_label']}: {_e(str(data_dir))}</p>
+        <h1 title="{labels['ledger_label']}: {_e(str(data_dir))}">{labels['workbench_title']}</h1>
       </div>
       <div class="header-actions">
         <button type="button" class="btn btn--primary" id="new-project-toggle" data-panel-target="panel-create" aria-expanded="{'true' if create_feedback else 'false'}">{labels['new_project']}</button>
@@ -483,8 +461,6 @@ def _render_home(
           <summary>{labels['more']}</summary>
           <div class="popover more-popover">
             <button type="button" class="btn more-item is-active" data-nav-item="action">{labels['nav_action']}</button>
-            <button type="button" class="btn more-item" data-nav-item="table">{labels['nav_library']}</button>
-            <button type="button" class="btn more-item" data-nav-item="board">{labels['nav_board']}</button>
             <button type="button" class="btn more-item" data-nav-item="doctor">Doctor</button>
             <details class="settings-menu" id="settings-menu">
               <summary>{labels['settings']}</summary>
@@ -496,60 +472,9 @@ def _render_home(
     </header>
     {alert}
     <main class="dashboard">
-      <section class="summary-strip compact-summary" data-summary-strip="compact" aria-label="{labels['action_metrics']}">
-        {_compact_summary(projects, report, language=language)}
-      </section>
-      <section class="toolbar" aria-label="{labels['filters']}">
-        <label class="search-field"><span>{labels['search']}</span><input id="project-search" type="search" placeholder="{labels['search_placeholder']}"></label>
-        <details class="filter-drawer" data-filter-menu>
-          <summary>{labels['filters']}</summary>
-          <div class="popover filter-panel">
-            {_filter_menu('status', labels['status_filter'], labels['all_statuses'], language=language)}
-            {_filter_menu('priority', labels['priority_filter'], labels['all_priorities'], language=language)}
-            <label class="filter-toggle"><input id="alert-filter" type="checkbox"><span>{labels['alerts_only']}</span></label>
-            <button type="button" id="reset-filters" class="btn btn--secondary">{labels['reset_filters']}</button>
-          </div>
-        </details>
-      </section>
       <section class="view-panel action-view" data-view-panel="action">
-        <div class="section-head">
-          <div>
-            <h2>{labels['action_queue']}</h2>
-            <p>{labels['action_queue_hint']}</p>
-          </div>
-        </div>
+        <h2 class="section-label">{labels['action_queue']}</h2>
         {action_queue}
-      </section>
-      <section class="view-panel database-shell" data-view-panel="table" hidden>
-        <div class="database-head">
-          <div>
-            <h2>{labels['project_library']}</h2>
-            <p>{labels['database_hint']}</p>
-          </div>
-        </div>
-        <div class="table-wrap">
-        <table class="action-table" id="projects">
-          <thead>
-            <tr>
-              <th>{labels['table_project']}</th>
-              <th>{labels['table_next']}</th>
-              <th>{labels['status']}</th>
-              <th>{labels['priority']}</th>
-              <th>{labels['table_flags']}</th>
-            </tr>
-          </thead>
-          {project_rows}
-        </table>
-        </div>
-      </section>
-      <section class="view-panel board-view" data-view-panel="board" hidden>
-        <div class="section-head">
-          <div>
-            <h2>{labels['board_title']}</h2>
-            <p>{labels['board_hint']}</p>
-          </div>
-        </div>
-        {board_columns}
       </section>
       <section id="doctor-panel" class="view-panel doctor-drawer {doctor_class}" data-view-panel="doctor" hidden>
         <div>
@@ -568,56 +493,6 @@ def _render_home(
 </div>
 """
     return _page("ctx", content, language=language)
-
-
-def _compact_summary(projects: list[Project], report: Any, *, language: str = "zh") -> str:
-    labels = _labels(language)
-    counts = _metric_counts(projects, report, language=language)
-    doctor_class = "error" if report.error_count else "warning" if report.warning_count else "ok"
-    doctor_note = (
-        labels["no_issues"]
-        if not report.diagnostics
-        else labels["doctor_counts"].format(errors=report.error_count, warnings=report.warning_count)
-    )
-    items = [
-        (labels["metric_action_required"], "action_required", counts["action_required"], ""),
-        (labels["metric_active"], "active", counts["active"], ""),
-        (labels["metric_risk"], "risk", counts["risk"], ""),
-        (labels["metric_todo"], "todo", counts["todo"], ""),
-        (labels["metric_doctor"], "alerts", counts["alerts"], doctor_class),
-    ]
-    parts = []
-    focus_statuses = {ProjectStatus.ACTION_REQUIRED, ProjectStatus.NOW, ProjectStatus.DOING}
-    focal = next((p for p in projects if p.status in focus_statuses), None)
-    if focal:
-        surface = _surface_summary(focal, language=language, missing="")
-        next_hint = focal.next_action[:80] + ("…" if len(focal.next_action) > 80 else "")
-        meta = (surface + " · " + next_hint) if surface else next_hint
-        parts.append(
-            f"<span class='summary-focus'>"
-            f"<strong>{_e(focal.name)}</strong>"
-            f"<small>{_e(meta)}</small>"
-            f"</span>"
-        )
-    for label, key, count, extra_class in items:
-        detail = doctor_note if key == "alerts" else ""
-        class_attr = f"summary-readout {extra_class}".strip()
-        parts.append(
-            f"<span class='{_e(class_attr)}'><span>{_e(label)}</span>"
-            f"<strong data-metric-key='{_e(key)}'>{count}</strong>"
-            f"<small>{_e(detail)}</small></span>"
-        )
-    return "".join(parts)
-
-
-def _metric_counts(projects: list[Project], report: Any, *, language: str = "zh") -> dict[str, int]:
-    return {
-        "action_required": sum(1 for project in projects if project.status is ProjectStatus.ACTION_REQUIRED),
-        "active": sum(1 for project in projects if project.status in {ProjectStatus.NOW, ProjectStatus.DOING}),
-        "risk": sum(1 for project in projects if project.status in {ProjectStatus.BLOCKED, ProjectStatus.SYNC_RISK}),
-        "todo": sum(1 for project in projects if project.status is ProjectStatus.TODO),
-        "alerts": sum(1 for project in projects if _project_flags(project, report, language=language)),
-    }
 
 
 def _action_queue(projects: list[Project], report: Any, *, language: str = "zh") -> str:
@@ -662,26 +537,10 @@ def _action_queue_item(project: Project, report: Any, *, language: str = "zh") -
   <div class="action-controls">
     {_row_choice_control("status", project, quick_action, language=language)}
     {_row_choice_control("priority", project, quick_action, language=language)}
-    <span class="flag-count" data-flag-count>{labels['flag_count'].format(count=flag_count)}</span>
+    <span class="flag-count" data-flag-count data-count="{flag_count}"></span>
     <button type="button" class="btn btn--icon detail-button" data-panel-target="{_e(panel_id)}" aria-label="{labels['details_edit']}" title="{labels['details_edit']}">···</button>
   </div>
 </article>
-"""
-
-
-def _filter_menu(field: str, label: str, all_label: str, *, language: str) -> str:
-    menu = _status_menu("", language=language, include_all=True, all_label=all_label) if field == "status" else _priority_menu("", language=language, include_all=True, all_label=all_label)
-    return f"""
-<div class="filter-menu choice-menu" data-menu-root data-filter-field="{_e(field)}">
-  <span class="filter-label">{_e(label)}</span>
-  <button type="button" id="{_e(field)}-filter" class="btn menu-trigger filter-trigger" data-menu-trigger data-value="" aria-haspopup="menu" aria-expanded="false">
-    <span data-current-label>{_e(all_label)}</span>
-    <small data-current-detail>all</small>
-  </button>
-  <div class="popover menu-popover" role="menu" hidden>
-    {menu}
-  </div>
-</div>
 """
 
 
@@ -805,106 +664,6 @@ def _project_search_text(project: Project, flags: list[tuple[str, str]], *, lang
             " ".join(label for _, label in flags),
         ]
     ).lower()
-
-
-def _project_table_body(
-    project: Project,
-    report: Any,
-    *,
-    language: str = "zh",
-    feedback: FormFeedback | None = None,
-) -> str:
-    labels = _labels(language)
-    quick_action = "/projects/" + urllib.parse.quote(project.id, safe="") + "/quick"
-    form_id = "quick-" + _dom_id(project.id)
-    panel_id = "panel-" + _dom_id(project.id)
-    flags = _project_flags(project, report, language=language)
-    summary_text = _project_search_text(project, flags, language=language)
-    alert_value = "1" if flags else "0"
-    return f"""
-<tbody class="project-rowgroup project-record" data-project-record data-project-id="{_e(project.id)}" data-status="{_e(project.status.value)}" data-priority="{_e(project.priority.value)}" data-alert="{alert_value}" data-search="{_e(summary_text)}">
-  <tr class="project-summary-row">
-    <td class="project-name" data-label="{labels['table_project']}">
-      <button type="button" class="cell-open detail-open-trigger" data-panel-target="{_e(panel_id)}">
-        <strong>{_e(project.name)}</strong>
-        <span>{_e(project.id)}</span>
-      </button>
-    </td>
-    <td class="next-action-cell" data-label="{labels['table_next']}">
-      <button type="button" class="next-action-edit" data-next-action-display data-project-id="{_e(project.id)}" data-endpoint="{_e(quick_action)}">{_e(project.next_action)}</button>
-      <span class="row-save-state" aria-live="polite"></span>
-    </td>
-    <td class="control-cell" data-label="{labels['status']}">{_row_choice_control("status", project, quick_action, language=language)}</td>
-    <td class="control-cell" data-label="{labels['priority']}">{_row_choice_control("priority", project, quick_action, language=language)}</td>
-    <td class="flag-cell" data-label="{labels['table_flags']}">
-      {_flag_badges(flags, language=language)}
-      <form id="{_e(form_id)}" class="row-update-form" method="post" action="{_e(quick_action)}">
-        <input type="hidden" name="status" value="{_e(project.status.value)}">
-        <input type="hidden" name="priority" value="{_e(project.priority.value)}">
-      </form>
-    </td>
-  </tr>
-</tbody>
-"""
-
-
-def _project_board(projects: list[Project], report: Any, *, language: str = "zh") -> str:
-    columns = []
-    for _zh_label, _en_label, statuses in STATUS_GROUPS:
-        for status in statuses:
-            columns.append(_status_board_column(status, projects, report, language=language))
-    return "<div class='kanban-board' data-board>" + "".join(columns) + "</div>"
-
-
-def _status_board_column(
-    status: ProjectStatus,
-    projects: list[Project],
-    report: Any,
-    *,
-    language: str = "zh",
-) -> str:
-    labels = _labels(language)
-    matching = [project for project in projects if project.status is status]
-    cards = "".join(_project_card(project, report, language=language) for project in matching)
-    if not cards:
-        cards = f"<div class='board-empty'>{labels['empty_column']}</div>"
-    return f"""
-<section class="board-column" data-board-column data-status="{_e(status.value)}">
-  <header>
-    <span class="tag tone-{_choice_tone(status)}">{_e(_choice_label(status, language=language))}</span>
-    <small data-column-count>{len(matching)}</small>
-  </header>
-  <div class="board-dropzone" data-dropzone="{_e(status.value)}">
-    {cards}
-  </div>
-</section>
-"""
-
-
-def _project_card(project: Project, report: Any, *, language: str = "zh") -> str:
-    action = "/projects/" + urllib.parse.quote(project.id, safe="")
-    quick_action = action + "/quick"
-    panel_id = "panel-" + _dom_id(project.id)
-    flags = _project_flags(project, report, language=language)
-    summary_text = _project_search_text(project, flags, language=language)
-    alert_value = "1" if flags else "0"
-    flag_count = len(flags)
-    labels = _labels(language)
-    return f"""
-<article class="board-card project-record" data-project-card data-project-record data-project-id="{_e(project.id)}" data-status="{_e(project.status.value)}" data-priority="{_e(project.priority.value)}" data-alert="{alert_value}" data-search="{_e(summary_text)}">
-  <button type="button" class="card-open detail-open-trigger" data-panel-target="{_e(panel_id)}">
-    <strong>{_e(project.name)}</strong>
-    <span data-next-action-text>{_e(project.next_action)}</span>
-  </button>
-  <div class="card-meta">
-    <button type="button" class="drag-handle" data-drag-handle aria-label="{_e(labels['drag_card'])}" title="{_e(labels['drag_card'])}">::</button>
-    {_row_choice_control("status", project, quick_action, language=language)}
-    <span class="tag tone-{_choice_tone(project.priority)}" data-priority-tag>{_e(_choice_label(project.priority, language=language))}</span>
-    <span class="muted" data-flag-count>{labels['flag_count'].format(count=flag_count)}</span>
-  </div>
-  <span class="row-save-state" aria-live="polite"></span>
-</article>
-"""
 
 
 def _create_peek_panel(*, language: str = "zh", feedback: FormFeedback | None = None) -> str:
@@ -1288,47 +1047,10 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     editNext: "{_e(labels['edit_next_action'])}"
   }};
   const STORAGE_PREFIX = "ctx.ui.";
-  const search = document.getElementById("project-search");
-  const alertsOnly = document.getElementById("alert-filter");
-  const reset = document.getElementById("reset-filters");
-  const doctorPanel = document.getElementById("doctor-panel");
   const moreMenu = document.querySelector("[data-more-menu]");
-  const records = Array.from(document.querySelectorAll("[data-project-record]"));
-  const metricButtons = Array.from(document.querySelectorAll("[data-metric-statuses]"));
-  const actionQueueStatuses = ["action_required", "blocked", "sync_risk", "now", "doing", "todo"];
-  const filterValues = {{
-    status: window.localStorage.getItem(STORAGE_PREFIX + "status") || "",
-    priority: window.localStorage.getItem(STORAGE_PREFIX + "priority") || ""
-  }};
-  let metricStatuses = [];
   const cssEscape = (value) => {{
     if (window.CSS && typeof window.CSS.escape === "function") return window.CSS.escape(value);
     return String(value).replace(/["\\\\]/g, "\\\\$&");
-  }};
-
-  const applyFilters = () => {{
-    const query = search ? search.value.trim().toLowerCase() : "";
-    const selectedStatus = filterValues.status || "";
-    const selectedPriority = filterValues.priority || "";
-    const onlyAlerts = alertsOnly ? alertsOnly.checked : false;
-    for (const record of records) {{
-      const matchesQuery = !query || record.dataset.search.includes(query);
-      const matchesStatus = !selectedStatus || record.dataset.status === selectedStatus;
-      const matchesMetric = metricStatuses.length === 0 || metricStatuses.includes(record.dataset.status);
-      const matchesPriority = !selectedPriority || record.dataset.priority === selectedPriority;
-      const matchesAlert = !onlyAlerts || record.dataset.alert === "1";
-      const belongsInActionQueue = !record.hasAttribute("data-action-record") || actionQueueStatuses.includes(record.dataset.status || "");
-      record.hidden = !(matchesQuery && matchesStatus && matchesMetric && matchesPriority && matchesAlert && belongsInActionQueue);
-    }}
-    updateBoardCounts();
-  }};
-
-  const updateBoardCounts = () => {{
-    for (const column of document.querySelectorAll("[data-board-column]")) {{
-      const visibleCards = Array.from(column.querySelectorAll("[data-project-card]")).filter((card) => !card.hidden);
-      const count = column.querySelector("[data-column-count]");
-      if (count) count.textContent = String(visibleCards.length);
-    }}
   }};
 
   const closeMenus = (except) => {{
@@ -1365,40 +1087,8 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     }}
   }};
 
-  const syncFilterMenu = (field, value) => {{
-    const root = document.querySelector(`[data-filter-field="${{field}}"]`);
-    if (!root) return;
-    const option = root.querySelector(`[data-menu-option][data-value="${{cssEscape(value)}}"]`);
-    if (option) {{
-      setMenuSelection(root, value, option.dataset.label, option.dataset.detail, option.dataset.tone);
-    }}
-  }};
-
-  const persistFilters = () => {{
-    window.localStorage.setItem(STORAGE_PREFIX + "status", filterValues.status || "");
-    window.localStorage.setItem(STORAGE_PREFIX + "priority", filterValues.priority || "");
-    if (alertsOnly) window.localStorage.setItem(STORAGE_PREFIX + "alerts", alertsOnly.checked ? "1" : "");
-    if (search) window.localStorage.setItem(STORAGE_PREFIX + "search", search.value || "");
-  }};
-
-  const clearMetric = () => {{
-    metricStatuses = [];
-    for (const button of metricButtons) button.classList.remove("active");
-  }};
-
-  if (search) {{
-    search.value = window.localStorage.getItem(STORAGE_PREFIX + "search") || "";
-    search.addEventListener("input", () => {{ persistFilters(); applyFilters(); }});
-  }}
-  if (alertsOnly) {{
-    alertsOnly.checked = window.localStorage.getItem(STORAGE_PREFIX + "alerts") === "1";
-    alertsOnly.addEventListener("change", () => {{ persistFilters(); applyFilters(); }});
-  }}
-  syncFilterMenu("status", filterValues.status);
-  syncFilterMenu("priority", filterValues.priority);
-
   const setView = (view) => {{
-    const allowed = ["action", "table", "board", "doctor"];
+    const allowed = ["action", "doctor"];
     const next = allowed.includes(view) ? view : "action";
     window.localStorage.setItem(STORAGE_PREFIX + "view", next);
     for (const tab of document.querySelectorAll("[data-view-tab]")) {{
@@ -1414,7 +1104,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     for (const panel of document.querySelectorAll("[data-view-panel]")) {{
       panel.hidden = panel.dataset.viewPanel !== next;
     }}
-    updateBoardCounts();
   }};
   for (const tab of document.querySelectorAll("[data-view-tab]")) {{
     tab.addEventListener("click", () => setView(tab.dataset.viewTab));
@@ -1436,37 +1125,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     }});
   }}
   setView(window.localStorage.getItem(STORAGE_PREFIX + "view") || "action");
-
-  for (const button of metricButtons) {{
-    button.addEventListener("click", () => {{
-      clearMetric();
-      button.classList.add("active");
-      if (button.dataset.metricStatuses) {{
-        setView("action");
-        metricStatuses = button.dataset.metricStatuses.split(",").filter(Boolean);
-        filterValues.status = "";
-        syncFilterMenu("status", "");
-        if (alertsOnly) alertsOnly.checked = false;
-      }}
-      persistFilters();
-      applyFilters();
-    }});
-  }}
-  if (reset) {{
-    reset.addEventListener("click", () => {{
-      clearMetric();
-      if (search) search.value = "";
-      filterValues.status = "";
-      filterValues.priority = "";
-      syncFilterMenu("status", "");
-      syncFilterMenu("priority", "");
-      if (alertsOnly) alertsOnly.checked = false;
-      persistFilters();
-      if (doctorPanel) doctorPanel.hidden = true;
-      for (const button of metricButtons) button.setAttribute("aria-expanded", "false");
-      applyFilters();
-    }});
-  }}
 
   const peekLayer = document.querySelector("[data-peek-layer]");
   const closePanels = () => {{
@@ -1530,14 +1188,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     }}
   }};
 
-  const updateMetrics = (metrics) => {{
-    if (!metrics) return;
-    for (const [key, value] of Object.entries(metrics)) {{
-      const target = document.querySelector(`[data-metric-key="${{key}}"]`);
-      if (target) target.textContent = String(value);
-    }}
-  }};
-
   const applyProjectPayload = (project) => {{
     for (const group of projectRecords(project.id)) {{
     group.dataset.status = project.status.value;
@@ -1551,7 +1201,7 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     const cardNext = group.querySelector("[data-next-action-text]");
     if (cardNext) cardNext.textContent = project.nextAction || "";
     const flagCount = group.querySelector("[data-flag-count]");
-    if (flagCount && project.flagCountLabel) flagCount.textContent = project.flagCountLabel;
+    if (flagCount) flagCount.dataset.count = project.flagCount ?? 0;
     const hiddenStatus = group.querySelector('input[name="status"]');
     const hiddenPriority = group.querySelector('input[name="priority"]');
     if (hiddenStatus) hiddenStatus.value = project.status.value;
@@ -1605,9 +1255,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
       if (!response.ok) throw new Error(await parseError(response));
       const payload = await response.json();
       applyProjectPayload(payload.project);
-      updateMetrics(payload.metrics);
-      moveBoardCard(payload.project.id, payload.project.status.value);
-      applyFilters();
       setRowState(projectId, "saved", payload.message || UI_TEXT.saved, {{ field, value: oldValues[field] }});
     }} catch (error) {{
       setRowState(projectId, "error", `${{UI_TEXT.failed}}: ${{error.message || error}}`);
@@ -1635,8 +1282,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
       if (!response.ok) throw new Error(await parseError(response));
       const payload = await response.json();
       applyProjectPayload(payload.project);
-      updateMetrics(payload.metrics);
-      applyFilters();
       setRowState(projectId, "saved", payload.message || UI_TEXT.saved, {{ field: "next_action", value: oldValue }});
     }} catch (error) {{
       setRowState(projectId, "error", `${{UI_TEXT.failed}}: ${{error.message || error}}`);
@@ -1698,15 +1343,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
       const root = option.closest("[data-menu-root]");
       if (!root) return;
       closeMenus();
-      const filterField = root.dataset.filterField;
-      if (filterField) {{
-        filterValues[filterField] = option.dataset.value || "";
-        setMenuSelection(root, option.dataset.value || "", option.dataset.label, option.dataset.detail, option.dataset.tone);
-        if (filterField === "status") clearMetric();
-        persistFilters();
-        applyFilters();
-        return;
-      }}
       quickUpdate(root, option.dataset.value || "");
     }});
   }}
@@ -1730,199 +1366,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     }}
   }});
 
-  const moveBoardCard = (projectId, status) => {{
-    const card = document.querySelector(`[data-project-card][data-project-id="${{cssEscape(projectId)}}"]`);
-    const zone = document.querySelector(`[data-dropzone="${{cssEscape(status)}}"]`);
-    if (card && zone && card.parentElement !== zone) zone.append(card);
-    updateBoardCounts();
-  }};
-
-  const finePointer = window.matchMedia("(pointer: fine)");
-  const coarsePointer = window.matchMedia("(pointer: coarse)");
-  const DRAG_THRESHOLD = 7;
-  const SCROLL_EDGE_SIZE = 56;
-  const SCROLL_STEP = 22;
-  let boardDrag = null;
-  let autoScrollFrame = 0;
-
-  const isBoardDragEnabled = (event) => event.pointerType === "mouse" && event.button === 0 && finePointer.matches && !coarsePointer.matches;
-
-  const clearDropTargets = () => {{
-    for (const zone of document.querySelectorAll("[data-dropzone]")) {{
-      zone.classList.remove("is-drop-target", "is-invalid-drop");
-    }}
-  }};
-
-  const dropzoneFromPoint = (x, y) => {{
-    for (const element of document.elementsFromPoint(x, y)) {{
-      const zone = element.closest ? element.closest("[data-dropzone]") : null;
-      if (zone) return zone;
-    }}
-    return null;
-  }};
-
-  const createDragGhost = (drag) => {{
-    const rect = drag.card.getBoundingClientRect();
-    const ghost = drag.card.cloneNode(true);
-    ghost.classList.add("drag-ghost");
-    ghost.classList.remove("is-dragging");
-    ghost.setAttribute("aria-hidden", "true");
-    ghost.removeAttribute("data-project-card");
-    ghost.removeAttribute("data-project-record");
-    ghost.removeAttribute("data-project-id");
-    for (const focusable of ghost.querySelectorAll("button, input, textarea, select")) {{
-      focusable.setAttribute("tabindex", "-1");
-    }}
-    ghost.style.width = `${{rect.width}}px`;
-    ghost.style.left = `${{rect.left}}px`;
-    ghost.style.top = `${{rect.top}}px`;
-    document.body.append(ghost);
-    drag.offsetX = drag.startX - rect.left;
-    drag.offsetY = drag.startY - rect.top;
-    drag.ghost = ghost;
-    drag.card.classList.add("is-dragging");
-  }};
-
-  const positionDragGhost = (drag, x, y) => {{
-    if (!drag.ghost) return;
-    drag.ghost.style.left = `${{x - drag.offsetX}}px`;
-    drag.ghost.style.top = `${{y - drag.offsetY}}px`;
-  }};
-
-  const setDragTarget = (drag, zone) => {{
-    if (drag.targetZone === zone) {{
-      if (drag.ghost) drag.ghost.classList.toggle("is-invalid-drop", !zone);
-      return;
-    }}
-    clearDropTargets();
-    drag.targetZone = zone;
-    if (zone) zone.classList.add("is-drop-target");
-    if (drag.ghost) drag.ghost.classList.toggle("is-invalid-drop", !zone);
-  }};
-
-  const stopAutoScroll = () => {{
-    if (autoScrollFrame) window.cancelAnimationFrame(autoScrollFrame);
-    autoScrollFrame = 0;
-    if (boardDrag) boardDrag.scrollDirection = 0;
-  }};
-
-  const runAutoScroll = () => {{
-    autoScrollFrame = 0;
-    const drag = boardDrag;
-    if (!drag || !drag.dragging || !drag.scrollDirection || !drag.board) return;
-    const before = drag.board.scrollLeft;
-    drag.board.scrollLeft += drag.scrollDirection * SCROLL_STEP;
-    if (drag.board.scrollLeft !== before) {{
-      setDragTarget(drag, dropzoneFromPoint(drag.lastX, drag.lastY));
-    }}
-    refreshAutoScroll(drag, drag.lastX, drag.lastY);
-  }};
-
-  function refreshAutoScroll(drag, x, y) {{
-    if (!drag.board) return;
-    const rect = drag.board.getBoundingClientRect();
-    const maxScroll = drag.board.scrollWidth - drag.board.clientWidth;
-    const withinBoardY = y >= rect.top && y <= rect.bottom;
-    let direction = 0;
-    if (withinBoardY && x <= rect.left + SCROLL_EDGE_SIZE && drag.board.scrollLeft > 0) {{
-      direction = -1;
-    }} else if (withinBoardY && x >= rect.right - SCROLL_EDGE_SIZE && drag.board.scrollLeft < maxScroll - 1) {{
-      direction = 1;
-    }}
-    drag.scrollDirection = direction;
-    if (direction && !autoScrollFrame) {{
-      autoScrollFrame = window.requestAnimationFrame(runAutoScroll);
-    }} else if (!direction && autoScrollFrame) {{
-      window.cancelAnimationFrame(autoScrollFrame);
-      autoScrollFrame = 0;
-    }}
-  }}
-
-  const cleanupBoardDrag = () => {{
-    const drag = boardDrag;
-    if (!drag) return null;
-    stopAutoScroll();
-    boardDrag = null;
-    clearDropTargets();
-    drag.card.classList.remove("is-dragging");
-    if (drag.ghost) drag.ghost.remove();
-    try {{
-      drag.handle.releasePointerCapture(drag.pointerId);
-    }} catch (_) {{}}
-    return drag;
-  }};
-
-  const beginBoardDrag = (drag) => {{
-    if (drag.dragging) return;
-    drag.dragging = true;
-    closeMenus();
-    createDragGhost(drag);
-    positionDragGhost(drag, drag.lastX, drag.lastY);
-    setDragTarget(drag, dropzoneFromPoint(drag.lastX, drag.lastY));
-  }};
-
-  for (const handle of document.querySelectorAll("[data-drag-handle]")) {{
-    handle.addEventListener("pointerdown", (event) => {{
-      if (!isBoardDragEnabled(event)) return;
-      const card = handle.closest("[data-project-card]");
-      const root = card ? card.querySelector('[data-quick-field="status"]') : null;
-      if (!card || !root) return;
-      event.preventDefault();
-      event.stopPropagation();
-      if (boardDrag) cleanupBoardDrag();
-      boardDrag = {{
-        card,
-        handle,
-        pointerId: event.pointerId,
-        startX: event.clientX,
-        startY: event.clientY,
-        lastX: event.clientX,
-        lastY: event.clientY,
-        sourceStatus: card.dataset.status || "",
-        targetZone: null,
-        dragging: false,
-        ghost: null,
-        offsetX: 0,
-        offsetY: 0,
-        scrollDirection: 0,
-        board: card.closest("[data-board]")
-      }};
-      try {{
-        handle.setPointerCapture(event.pointerId);
-      }} catch (_) {{}}
-    }});
-  }}
-
-  document.addEventListener("pointermove", (event) => {{
-    const drag = boardDrag;
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    drag.lastX = event.clientX;
-    drag.lastY = event.clientY;
-    const moved = Math.hypot(event.clientX - drag.startX, event.clientY - drag.startY);
-    if (!drag.dragging && moved >= DRAG_THRESHOLD) beginBoardDrag(drag);
-    if (!drag.dragging) return;
-    event.preventDefault();
-    positionDragGhost(drag, event.clientX, event.clientY);
-    setDragTarget(drag, dropzoneFromPoint(event.clientX, event.clientY));
-    refreshAutoScroll(drag, event.clientX, event.clientY);
-  }});
-
-  const finishBoardDrag = (event, save) => {{
-    const drag = boardDrag;
-    if (!drag || event.pointerId !== drag.pointerId) return;
-    if (drag.dragging) {{
-      event.preventDefault();
-      setDragTarget(drag, dropzoneFromPoint(event.clientX, event.clientY));
-    }}
-    const targetStatus = drag.targetZone ? drag.targetZone.dataset.dropzone : "";
-    const shouldSave = save && drag.dragging && targetStatus && targetStatus !== drag.sourceStatus;
-    const root = shouldSave ? drag.card.querySelector('[data-quick-field="status"]') : null;
-    cleanupBoardDrag();
-    if (root) quickUpdate(root, targetStatus);
-  }};
-
-  document.addEventListener("pointerup", (event) => finishBoardDrag(event, true));
-  document.addEventListener("pointercancel", (event) => finishBoardDrag(event, false));
 
   const errorTarget = document.querySelector("[data-focus-error='true']");
   if (errorTarget) {{
@@ -1932,7 +1375,6 @@ def _page(title: str, content: str, *, language: str = "zh") -> str:
     const invalid = errorTarget.querySelector("[aria-invalid='true'], input, textarea, select, [data-menu-trigger]");
     if (invalid && typeof invalid.focus === "function") invalid.focus();
   }}
-  applyFilters();
 }})();
 </script>
 </body>
@@ -1961,28 +1403,6 @@ def _grouped_status_select(name: str, selected: str, *, language: str = "zh", fo
         groups.append(f"<optgroup label='{_e(label)}'>{''.join(options)}</optgroup>")
     form_attr = f" form='{_e(form_id)}'" if form_id else ""
     return f"<select name='{_e(name)}'{form_attr}>{''.join(groups)}</select>"
-
-
-def _status_radios(name: str, selected: str) -> str:
-    statuses = list(QUICK_STATUSES)
-    try:
-        current = ProjectStatus(selected)
-    except ValueError:
-        current = ProjectStatus.TODO
-    if current not in statuses:
-        statuses.append(current)
-    return _radio_buttons(name, statuses, selected)
-
-
-def _radio_buttons(name: str, values: Any, selected: str) -> str:
-    fields = []
-    for item in values:
-        value = item.value
-        checked = " checked" if value == selected else ""
-        fields.append(
-            f"<label><input type='radio' name='{_e(name)}' value='{_e(value)}'{checked}>{_e(value)}</label>"
-        )
-    return "<div class='radio-row'>" + "".join(fields) + "</div>"
 
 
 def _checkboxes(name: str, enum_type: type, selected: set[str]) -> str:
@@ -2087,10 +1507,6 @@ def _field_attrs(key: str, errors: dict[str, str], first_error: str) -> str:
     return f" aria-invalid='true'{autofocus}"
 
 
-def _group_has_errors(errors: dict[str, str], keys: set[str]) -> bool:
-    return bool(keys & set(errors))
-
-
 def _form_error_message(language: str) -> str:
     return "请修正标出的字段后再提交。" if language == "zh" else "Fix the highlighted fields and submit again."
 
@@ -2140,58 +1556,18 @@ def _e(value: object) -> str:
 def _labels(language: str) -> dict[str, str]:
     if language == "en":
         return {
-            "title": "ctx Action Dashboard",
             "workbench_title": "Action Workbench",
             "ledger_label": "ledger",
-            "main_nav": "Main navigation",
             "nav_action": "Action",
-            "nav_library": "Library",
-            "nav_board": "Board",
-            "nav_doctor": "Doctor",
-            "filters": "Filters",
+            "more": "More",
+            "new_project": "New Project",
+            "settings": "Settings",
             "action_queue": "Action Queue",
-            "action_queue_hint": "Sorted by the next project most likely to need attention.",
-            "project_library": "Project Library",
-            "board_title": "Board",
-            "board_hint": "Move status with the drag handle on desktop, or use the status menu.",
-            "start_title": "Context Start",
-            "start_hint": "Use these shortcuts when the ledger is empty or context is incomplete.",
-            "start_create": "Create first project",
-            "start_create_hint": "Capture a name and one concrete next action.",
-            "start_context": "Fill missing context",
-            "start_context_hint": "{count} project(s) need surface, provider, or agent.",
-            "start_doctor": "Review Doctor",
-            "empty_action_queue": "No active action items.",
-            "empty_projects": "No projects yet.",
+            "close": "Close",
             "no_issues": "No issues found",
             "doctor_counts": "{errors} error(s), {warnings} warning(s)",
-            "search": "Search",
-            "search_placeholder": "Search name, next action, provider, or repo",
-            "status_filter": "Status",
-            "all_statuses": "All statuses",
-            "priority_filter": "Priority",
-            "all_priorities": "All priorities",
-            "alerts_only": "Alerts only",
-            "reset_filters": "Reset",
-            "action_metrics": "Action metrics",
-            "action_table": "Action Table",
-            "metric_action_required": "Needs action",
-            "metric_action_hint": "action_required",
-            "metric_active": "In progress",
-            "metric_active_hint": "now / doing",
-            "metric_risk": "Blocked / sync risk",
-            "metric_risk_hint": "blocked / sync_risk",
-            "metric_todo": "Todo",
-            "metric_todo_hint": "todo",
-            "metric_doctor": "Doctor",
-            "table_project": "Project",
-            "table_next": "Next",
-            "table_location": "Location",
-            "table_flags": "Flags",
-            "table_actions": "Actions",
-            "save_inline": "Save",
-            "expand_row": "Details",
-            "collapse_row": "Close",
+            "empty_action_queue": "No active action items.",
+            "details_edit": "Details and Edit",
             "flag_no_next": "No next action",
             "flag_no_surface": "No surface",
             "flag_no_provider": "No provider",
@@ -2201,29 +1577,8 @@ def _labels(language: str) -> dict[str, str]:
             "flag_doctor_error": "Doctor error {count}",
             "flag_doctor_warning": "Doctor warning {count}",
             "no_flags": "None",
-            "view": "View",
-            "view_table": "Table",
-            "view_board": "Board",
-            "view_list": "List",
-            "view_compact": "Compact",
-            "projects": "Projects",
-            "database_hint": "Local YAML database view",
-            "new_project": "New Project",
-            "more": "More",
-            "close": "Close",
-            "empty_column": "Empty",
-            "flag_count": "{count} flag(s)",
-            "drag_card": "Drag to move status",
-            "edit_next_action": "Edit next action",
-            "settings": "Settings",
-            "doctor_summary": "Doctor Summary",
-            "next_action": "Next Action",
-            "context": "Context",
-            "expand_edit": "Expand Edit",
-            "details_edit": "Details and Edit",
-            "status": "Status",
-            "priority": "Priority",
-            "save_quick": "Save Quick Change",
+            "not_filled": "Not filled",
+            "repo": "Repo",
             "project_id": "Project id",
             "project_id_placeholder": "local-ai-ctx",
             "project_id_help": "Optional. Leave blank to generate one from the name.",
@@ -2232,14 +1587,13 @@ def _labels(language: str) -> dict[str, str]:
             "name_placeholder": "Display name",
             "name_help": "Short project name shown in the action list.",
             "next_placeholder": "Ship the smallest useful slice",
+            "next_action": "Next Action",
             "next_action_help": "One concrete action to take next.",
-            "surface_path_short": "Surface / path",
             "surface_path": "Surface path",
             "surface_help": "Where this work is normally continued.",
             "surface_path_help": "Local or remote path that helps you resume quickly.",
             "agents_help": "AI tools relevant to this project.",
             "providers_help": "Provider ids, one per line; missing providers are created as third-party entries.",
-            "repo": "Repo",
             "repo_remote_help": "Optional remote URL for reference only.",
             "default_branch": "Default branch",
             "default_branch_help": "Expected base branch.",
@@ -2253,18 +1607,18 @@ def _labels(language: str) -> dict[str, str]:
             "risks_help": "Things likely to trip up the next session.",
             "rules_help": "Local rules to remember, one per line.",
             "one_per_line": "One per line",
+            "status": "Status",
+            "priority": "Priority",
             "save": "Save",
             "saving": "Saving",
             "saved": "Saved",
             "save_failed": "Save failed",
             "undo": "Undo",
             "add": "Add",
-            "advanced": "Advanced Settings",
-            "more_info": "Fill More Information",
+            "edit_next_action": "Edit next action",
             "group_location_tools": "Location and Tools",
             "group_repo": "Repo",
             "group_risk_rules": "Risks and Rules",
-            "not_filled": "Not filled",
             "current_ledger": "Current ledger",
             "path_source": "Path source",
             "config_scope": "Save settings to",
@@ -2277,58 +1631,18 @@ def _labels(language: str) -> dict[str, str]:
             "override_note": "This run was started with an explicit override; saved settings affect the next non-overridden launch only.",
         }
     return {
-        "title": "ctx 行动仪表板",
         "workbench_title": "行动工作台",
         "ledger_label": "ledger",
-        "main_nav": "主导航",
         "nav_action": "行动",
-        "nav_library": "项目库",
-        "nav_board": "看板",
-        "nav_doctor": "Doctor",
-        "filters": "筛选",
+        "more": "更多",
+        "new_project": "新增项目",
+        "settings": "设置 / Settings",
         "action_queue": "行动队列",
-        "action_queue_hint": "按最值得推进的顺序排列，先处理需行动、阻塞/同步风险和进行中的项目。",
-        "project_library": "项目库",
-        "board_title": "看板",
-        "board_hint": "桌面端用拖拽把手移动状态，移动端使用状态菜单。",
-        "start_title": "情境起步",
-        "start_hint": "ledger 为空或上下文不完整时，先从这里补齐最小信息。",
-        "start_create": "创建第一个项目",
-        "start_create_hint": "只需要名称和一个具体下一步。",
-        "start_context": "补全缺失上下文",
-        "start_context_hint": "{count} 个项目缺 surface、provider 或 agent。",
-        "start_doctor": "查看 Doctor",
-        "empty_action_queue": "当前没有需要推进的行动项。",
-        "empty_projects": "还没有项目。",
+        "close": "关闭",
         "no_issues": "未发现问题",
         "doctor_counts": "{errors} 个错误，{warnings} 个警告",
-        "search": "搜索",
-        "search_placeholder": "按名称、下一步、provider、repo 搜索",
-        "status_filter": "状态筛选",
-        "all_statuses": "全部状态",
-        "priority_filter": "优先级筛选",
-        "all_priorities": "全部优先级",
-        "alerts_only": "仅看警示",
-        "reset_filters": "重置",
-        "action_metrics": "行动指标",
-        "action_table": "行动表格",
-        "metric_action_required": "需行动",
-        "metric_action_hint": "action_required",
-        "metric_active": "进行中",
-        "metric_active_hint": "now / doing",
-        "metric_risk": "阻塞 / 同步风险",
-        "metric_risk_hint": "blocked / sync_risk",
-        "metric_todo": "待办",
-        "metric_todo_hint": "todo",
-        "metric_doctor": "Doctor 状态",
-        "table_project": "项目",
-        "table_next": "下一步",
-        "table_location": "位置",
-        "table_flags": "标记",
-        "table_actions": "操作",
-        "save_inline": "保存",
-        "expand_row": "展开",
-        "collapse_row": "收起",
+        "empty_action_queue": "当前没有需要推进的行动项。",
+        "details_edit": "详情和编辑",
         "flag_no_next": "缺下一步",
         "flag_no_surface": "缺位置",
         "flag_no_provider": "缺 Provider",
@@ -2338,29 +1652,8 @@ def _labels(language: str) -> dict[str, str]:
         "flag_doctor_error": "Doctor 错误 {count}",
         "flag_doctor_warning": "Doctor 警告 {count}",
         "no_flags": "无",
-        "view": "视图",
-        "view_table": "Table",
-        "view_board": "Board",
-        "view_list": "列表",
-        "view_compact": "紧凑",
-        "projects": "项目",
-        "database_hint": "本地 YAML 数据库视图",
-        "new_project": "新增项目",
-        "more": "更多",
-        "close": "关闭",
-        "empty_column": "空",
-        "flag_count": "{count} 个标记",
-        "drag_card": "拖动以移动状态",
-        "edit_next_action": "编辑下一步",
-        "settings": "设置 / Settings",
-        "doctor_summary": "Doctor 摘要",
-        "next_action": "下一步",
-        "context": "上下文",
-        "expand_edit": "展开编辑",
-        "details_edit": "详情和编辑",
-        "status": "状态",
-        "priority": "优先级",
-        "save_quick": "保存快捷修改",
+        "not_filled": "未填写",
+        "repo": "Repo",
         "project_id": "项目 id",
         "project_id_placeholder": "local-ai-ctx",
         "project_id_help": "可选。留空会根据名称自动生成，冲突时追加 -2/-3。",
@@ -2369,14 +1662,13 @@ def _labels(language: str) -> dict[str, str]:
         "name_placeholder": "显示名称",
         "name_help": "行动列表里显示的短名称。",
         "next_placeholder": "交付一个最小可用切片",
+        "next_action": "下一步",
         "next_action_help": "下一次打开时最该做的一件具体事。",
-        "surface_path_short": "Surface / 路径",
         "surface_path": "Surface 路径",
         "surface_help": "通常在哪个环境继续这个项目。",
         "surface_path_help": "方便恢复上下文的本地或远程路径。",
         "agents_help": "与该项目相关的 AI 工具。",
         "providers_help": "每行一个 provider id；缺失项会按第三方 provider 创建。",
-        "repo": "Repo",
         "repo_remote_help": "只作参考的远程地址。",
         "default_branch": "默认分支",
         "default_branch_help": "预期基线分支。",
@@ -2390,18 +1682,18 @@ def _labels(language: str) -> dict[str, str]:
         "risks_help": "下次接手时最容易踩到的问题。",
         "rules_help": "需要记住的本地规则，每行一条。",
         "one_per_line": "每行一条",
+        "status": "状态",
+        "priority": "优先级",
         "save": "保存",
         "saving": "保存中",
         "saved": "已保存",
         "save_failed": "保存失败",
         "undo": "撤销",
         "add": "新增",
-        "advanced": "高级设置",
-        "more_info": "填写更多信息",
+        "edit_next_action": "编辑下一步",
         "group_location_tools": "位置与工具",
         "group_repo": "Repo",
         "group_risk_rules": "风险与规则",
-        "not_filled": "未填写",
         "current_ledger": "当前运行 ledger",
         "path_source": "路径来源",
         "config_scope": "设置保存位置",
