@@ -12,6 +12,7 @@ echo "ok pytest"
 scripts/ui_smoke.sh
 echo "ok ui smoke"
 
+UV_CACHE_DIR="${UV_CACHE_DIR:-/tmp/local-ai-ctx-uv-cache}" uv run --extra dev playwright install chromium --with-deps
 scripts/ui_browser_smoke.sh
 echo "ok ui browser smoke"
 
