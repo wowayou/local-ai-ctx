@@ -7,6 +7,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from .doctor import DiagnosticSeverity, DoctorReport
+from .git_check import GitState
 from .models import Project, ProjectStatus, Provider, ProviderScope, SurfaceConfig
 from .rules import next_action_projects, preferred_surface, sort_projects
 
@@ -218,3 +219,61 @@ def _scope_summary(scope: ProviderScope) -> str:
     if scope.agents:
         parts.append("agents: " + _join_enum_values(scope.agents))
     return "; ".join(parts)
+
+
+def render_git_state(console: Console, git_state: GitState) -> None:
+    if not git_state.exists:
+        console.print(Panel.fit(f"[red]Path not found:[/red] {git_state.path}", title="Git State"))
+        return
+    if not git_state.is_repo:
+        console.print(Panel.fit(f"[yellow]Not a git repository:[/yellow] {git_state.path}", title="Git State"))
+        return
+
+    table = Table(title="Git State", show_header=False)
+    table.add_column("Field", style="bold", no_wrap=True)
+    table.add_column("Value")
+
+    table.add_row("path", git_state.path)
+    table.add_row("branch", git_state.branch or "[dim]unknown[/dim]")
+
+    if git_state.upstream_exists:
+        upstream_val = git_state.upstream or ""
+        if git_state.diverged:
+            upstream_val += f" [red](diverged: {git_state.ahead}↑ {git_state.behind}↓)[/red]"
+        elif git_state.ahead > 0:
+            upstream_val += f" [yellow]({git_state.ahead} unpushed)[/yellow]"
+        elif git_state.behind > 0:
+            upstream_val += f" [yellow]({git_state.behind} behind)[/yellow]"
+        else:
+            upstream_val += " [green](up to date)[/green]"
+        table.add_row("upstream", upstream_val)
+    else:
+        table.add_row("upstream", "[red]none (no tracking branch)[/red]")
+
+    if git_state.dirty:
+        dirty_parts = []
+        if git_state.staged:
+            dirty_parts.append(f"{git_state.staged} staged")
+        if git_state.unstaged:
+            dirty_parts.append(f"{git_state.unstaged} unstaged")
+        table.add_row("working tree", f"[yellow]dirty ({', '.join(dirty_parts)})[/yellow]")
+    else:
+        table.add_row("working tree", "[green]clean[/green]")
+
+    if git_state.untracked:
+        table.add_row("untracked", str(git_state.untracked))
+
+    console.print(table)
+
+
+def render_close_checklist(console: Console, items: list[tuple[bool, str]], *, project_name: str = "") -> None:
+    title = f"Close Checklist — {project_name}" if project_name else "Close Checklist"
+    table = Table(title=title)
+    table.add_column("", no_wrap=True, width=3)
+    table.add_column("Check")
+
+    for ok, label in items:
+        mark = "[green]✓[/green]" if ok else "[red]✗[/red]"
+        table.add_row(mark, label)
+
+    console.print(table)

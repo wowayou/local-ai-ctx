@@ -96,6 +96,7 @@ class Project:
     blockers: list[str] = field(default_factory=list)
     risks: list[str] = field(default_factory=list)
     rules: list[str] = field(default_factory=list)
+    last_handoff_at: str | None = None
 
     @classmethod
     def from_yaml(cls, project_id: str, raw: Any) -> "Project":
@@ -133,6 +134,7 @@ class Project:
             blockers=_string_list(raw.get("blockers"), f"projects.{project_id}.blockers"),
             risks=_string_list(raw.get("risks"), f"projects.{project_id}.risks"),
             rules=_string_list(raw.get("rules"), f"projects.{project_id}.rules"),
+            last_handoff_at=_optional_str(raw.get("last_handoff_at"), f"projects.{project_id}.last_handoff_at") or None,
         )
 
 

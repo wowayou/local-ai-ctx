@@ -38,6 +38,40 @@ def test_project_rejects_unknown_status() -> None:
         )
 
 
+def test_project_last_handoff_at_defaults_to_none() -> None:
+    project = Project.from_yaml(
+        "demo",
+        {"name": "demo", "status": "doing", "next_action": "Go"},
+    )
+    assert project.last_handoff_at is None
+
+
+def test_project_last_handoff_at_round_trips() -> None:
+    project = Project.from_yaml(
+        "demo",
+        {
+            "name": "demo",
+            "status": "doing",
+            "next_action": "Go",
+            "last_handoff_at": "2024-06-01T12:00:00Z",
+        },
+    )
+    assert project.last_handoff_at == "2024-06-01T12:00:00Z"
+
+
+def test_project_last_handoff_at_empty_string_becomes_none() -> None:
+    project = Project.from_yaml(
+        "demo",
+        {
+            "name": "demo",
+            "status": "doing",
+            "next_action": "Go",
+            "last_handoff_at": "",
+        },
+    )
+    assert project.last_handoff_at is None
+
+
 def test_provider_defaults_name_to_id() -> None:
     provider = Provider.from_yaml(
         "official",

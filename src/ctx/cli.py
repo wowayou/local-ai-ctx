@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -21,10 +22,11 @@ from .config import (
 )
 from .doctor import run_doctor
 from .errors import ConfigError
+from .git_check import check_git, detect_surface, resolve_project_path
 from .i18n import t
 from .models import Priority, ProjectStatus
-from .render import render_doctor, render_list, render_next, render_now, render_show
-from .store import WorkbenchStore, add_project, init_store, load_store, resolve_data_dir
+from .render import render_close_checklist, render_doctor, render_git_state, render_list, render_next, render_now, render_show
+from .store import WorkbenchStore, add_project, init_store, load_store, resolve_data_dir, update_project
 from .ui import serve_ui
 
 
@@ -267,6 +269,154 @@ def ui(
             else:
                 console.print(t(state.language, "ui_skip_setup"))
         _serve_ui(state, port=port, open_browser=not no_open)
+    except ConfigError as exc:
+        _print_error(exc, state.language)
+        raise typer.Exit(code=1) from exc
+
+
+@app.command("check")
+def check(
+    ctx: typer.Context,
+    project: str = typer.Argument(..., help="Project id or exact name."),
+) -> None:
+    """Show git state for a project on the current surface."""
+    store = _load_or_exit(ctx)
+    try:
+        selected = store.get_project(project)
+    except ConfigError as exc:
+        _print_error(exc, _state(ctx).language)
+        raise typer.Exit(code=1) from exc
+
+    surface = detect_surface()
+    path = resolve_project_path(selected, surface)
+    if path is None:
+        console.print(
+            f"[bold red]error:[/bold red] no path configured for surface "
+            f"[bold]{surface.value}[/bold] on project [bold]{selected.name}[/bold]"
+        )
+        raise typer.Exit(code=1)
+
+    git_state = check_git(path)
+    render_git_state(console, git_state)
+    if git_state.any_issues:
+        raise typer.Exit(code=1)
+
+
+@app.command("close")
+def close(
+    ctx: typer.Context,
+    project: str = typer.Argument(..., help="Project id or exact name."),
+) -> None:
+    """Print a wrap-up checklist for a project."""
+    store = _load_or_exit(ctx)
+    try:
+        selected = store.get_project(project)
+    except ConfigError as exc:
+        _print_error(exc, _state(ctx).language)
+        raise typer.Exit(code=1) from exc
+
+    surface = detect_surface()
+    path = resolve_project_path(selected, surface)
+
+    git_state = check_git(path) if path else None
+
+    items: list[tuple[bool, str]] = []
+    if git_state is not None and git_state.is_repo:
+        items.append((not git_state.dirty, "Git clean (no dirty files)"))
+        items.append((git_state.ahead == 0, "Nothing unpushed"))
+        items.append((git_state.behind == 0, "Not behind upstream"))
+        items.append((not git_state.diverged, "Not diverged"))
+        items.append((git_state.upstream_exists, "Upstream tracking branch exists"))
+    elif path is None:
+        items.append((False, "No path configured for this surface — git state unknown"))
+    else:
+        items.append((False, "Not a git repository"))
+
+    items.append((selected.last_handoff_at is not None, "Handoff recorded (run ctx handoff)"))
+    items.append((bool(selected.next_action.strip()), "Next action defined"))
+
+    render_close_checklist(console, items, project_name=selected.name)
+
+    all_ok = all(ok for ok, _ in items)
+    if not all_ok:
+        raise typer.Exit(code=1)
+
+
+@app.command("handoff")
+def handoff(
+    ctx: typer.Context,
+    project: str = typer.Argument(..., help="Project id or exact name."),
+) -> None:
+    """Generate a handoff summary and record it on the project."""
+    state = _state(ctx)
+    store = _load_or_exit(ctx)
+    try:
+        selected = store.get_project(project)
+    except ConfigError as exc:
+        _print_error(exc, state.language)
+        raise typer.Exit(code=1) from exc
+
+    surface = detect_surface()
+    path = resolve_project_path(selected, surface)
+    git_state = check_git(path) if path else None
+
+    session_summary = typer.prompt("What did you finish this session?")
+
+    now_iso = datetime.now(tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    branch_line = git_state.branch if git_state and git_state.is_repo else "unknown"
+    upstream_line = git_state.upstream or "none" if git_state and git_state.is_repo else "unknown"
+    if git_state and git_state.is_repo:
+        sync_parts = []
+        if git_state.ahead:
+            sync_parts.append(f"{git_state.ahead}↑ unpushed")
+        if git_state.behind:
+            sync_parts.append(f"{git_state.behind}↓ behind")
+        if git_state.dirty:
+            dirty_parts = []
+            if git_state.staged:
+                dirty_parts.append(f"{git_state.staged} staged")
+            if git_state.unstaged:
+                dirty_parts.append(f"{git_state.unstaged} unstaged")
+            sync_parts.append(f"dirty ({', '.join(dirty_parts)})")
+        sync_line = ", ".join(sync_parts) if sync_parts else "clean"
+    else:
+        sync_line = "unknown"
+
+    blockers_text = "\n".join(f"- {b}" for b in selected.blockers) or "none"
+    risks_text = "\n".join(f"- {r}" for r in selected.risks) or "none"
+
+    markdown = f"""# Handoff: {selected.name}
+
+**Date**: {now_iso}  **Status**: {selected.status.value}  **Branch**: {branch_line}
+
+## Session summary
+
+{session_summary}
+
+## Next action
+
+{selected.next_action}
+
+## Git state
+
+- Branch: {branch_line}
+- Upstream: {upstream_line}
+- Sync: {sync_line}
+
+## Blockers
+
+{blockers_text}
+
+## Risks
+
+{risks_text}
+"""
+
+    console.print(markdown)
+
+    try:
+        update_project(state.data_dir, selected.id, last_handoff_at=now_iso)
     except ConfigError as exc:
         _print_error(exc, state.language)
         raise typer.Exit(code=1) from exc

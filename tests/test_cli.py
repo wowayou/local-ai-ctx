@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
+import pytest
 from typer.testing import CliRunner
 
 from ctx.cli import app
+from ctx.git_check import GitState
+from ctx.models import Surface
 
 
 runner = CliRunner()
@@ -217,3 +221,206 @@ def test_cli_next_orders_action_required_first(sample_ledger: Path) -> None:
 
     assert result.exit_code == 0
     assert result.output.index("client-portal-demo") < result.output.index("sync-branch-demo")
+
+
+# ---------------------------------------------------------------------------
+# ctx check
+# ---------------------------------------------------------------------------
+
+def _clean_git_state(path: str) -> GitState:
+    return GitState(
+        path=path,
+        exists=True,
+        is_repo=True,
+        branch="main",
+        upstream="origin/main",
+        upstream_exists=True,
+        ahead=0,
+        behind=0,
+        staged=0,
+        unstaged=0,
+        untracked=0,
+    )
+
+
+def _make_ledger_with_wsl_path(tmp_path: Path, wsl_path: str) -> Path:
+    ledger = tmp_path / "ledger"
+    ledger.mkdir()
+    (ledger / "projects.yml").write_text(
+        f"projects:\n"
+        f"  myproject:\n"
+        f"    name: My Project\n"
+        f"    status: doing\n"
+        f"    priority: high\n"
+        f"    next_action: Keep going\n"
+        f"    surfaces:\n"
+        f"      wsl:\n"
+        f"        path: {wsl_path}\n",
+        encoding="utf-8",
+    )
+    (ledger / "providers.yml").write_text("providers: {}\n", encoding="utf-8")
+    return ledger
+
+
+def test_cli_check_exits_zero_when_clean(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    clean_state = _clean_git_state("/home/user/repo")
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=clean_state),
+    ):
+        result = runner.invoke(app, ["--data-dir", str(ledger), "check", "myproject"])
+
+    assert result.exit_code == 0
+    assert "main" in result.output
+
+
+def test_cli_check_exits_one_when_dirty(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    dirty_state = GitState(
+        path="/home/user/repo",
+        exists=True,
+        is_repo=True,
+        branch="main",
+        upstream="origin/main",
+        upstream_exists=True,
+        ahead=0,
+        behind=0,
+        staged=2,
+        unstaged=1,
+        untracked=0,
+    )
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=dirty_state),
+    ):
+        result = runner.invoke(app, ["--data-dir", str(ledger), "check", "myproject"])
+
+    assert result.exit_code == 1
+
+
+def test_cli_check_exits_one_when_no_path_for_surface(tmp_path: Path) -> None:
+    ledger = tmp_path / "ledger"
+    ledger.mkdir()
+    (ledger / "projects.yml").write_text(
+        "projects:\n  myproject:\n    name: My Project\n    status: doing\n    priority: high\n    next_action: Go\n",
+        encoding="utf-8",
+    )
+    (ledger / "providers.yml").write_text("providers: {}\n", encoding="utf-8")
+
+    with patch("ctx.cli.detect_surface", return_value=Surface.WSL):
+        result = runner.invoke(app, ["--data-dir", str(ledger), "check", "myproject"])
+
+    assert result.exit_code == 1
+    assert "no path configured" in result.output
+
+
+# ---------------------------------------------------------------------------
+# ctx close
+# ---------------------------------------------------------------------------
+
+def test_cli_close_exits_zero_when_all_checks_pass(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    # write a last_handoff_at into the project
+    projects_yml = ledger / "projects.yml"
+    text = projects_yml.read_text(encoding="utf-8")
+    projects_yml.write_text(text + "    last_handoff_at: '2024-01-01T00:00:00Z'\n", encoding="utf-8")
+
+    clean_state = _clean_git_state("/home/user/repo")
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=clean_state),
+    ):
+        result = runner.invoke(app, ["--data-dir", str(ledger), "close", "myproject"])
+
+    assert result.exit_code == 0
+    assert "✓" in result.output or "close" in result.output.lower()
+
+
+def test_cli_close_exits_one_when_unpushed(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    projects_yml = ledger / "projects.yml"
+    text = projects_yml.read_text(encoding="utf-8")
+    projects_yml.write_text(text + "    last_handoff_at: '2024-01-01T00:00:00Z'\n", encoding="utf-8")
+
+    unpushed_state = GitState(
+        path="/home/user/repo",
+        exists=True,
+        is_repo=True,
+        branch="main",
+        upstream="origin/main",
+        upstream_exists=True,
+        ahead=1,
+        behind=0,
+        staged=0,
+        unstaged=0,
+        untracked=0,
+    )
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=unpushed_state),
+    ):
+        result = runner.invoke(app, ["--data-dir", str(ledger), "close", "myproject"])
+
+    assert result.exit_code == 1
+
+
+def test_cli_close_exits_one_when_no_handoff(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    clean_state = _clean_git_state("/home/user/repo")
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=clean_state),
+    ):
+        result = runner.invoke(app, ["--data-dir", str(ledger), "close", "myproject"])
+
+    assert result.exit_code == 1
+    assert "Handoff" in result.output
+
+
+# ---------------------------------------------------------------------------
+# ctx handoff
+# ---------------------------------------------------------------------------
+
+def test_cli_handoff_writes_last_handoff_at(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    clean_state = _clean_git_state("/home/user/repo")
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=clean_state),
+    ):
+        result = runner.invoke(
+            app,
+            ["--data-dir", str(ledger), "handoff", "myproject"],
+            input="Finished implementing the feature\n",
+        )
+
+    assert result.exit_code == 0
+    assert "Handoff: My Project" in result.output
+    assert "Finished implementing the feature" in result.output
+
+    projects_content = (ledger / "projects.yml").read_text(encoding="utf-8")
+    assert "last_handoff_at" in projects_content
+
+
+def test_cli_handoff_includes_next_action_in_output(tmp_path: Path) -> None:
+    ledger = _make_ledger_with_wsl_path(tmp_path, "/home/user/repo")
+    clean_state = _clean_git_state("/home/user/repo")
+
+    with (
+        patch("ctx.cli.detect_surface", return_value=Surface.WSL),
+        patch("ctx.cli.check_git", return_value=clean_state),
+    ):
+        result = runner.invoke(
+            app,
+            ["--data-dir", str(ledger), "handoff", "myproject"],
+            input="Did some work\n",
+        )
+
+    assert "Keep going" in result.output

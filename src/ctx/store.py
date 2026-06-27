@@ -165,6 +165,7 @@ def update_project(
     blockers: list[str] | None = None,
     risks: list[str] | None = None,
     rules: list[str] | None = None,
+    last_handoff_at: str | None = None,
 ) -> UpdateProjectResult:
     if not project_id.strip():
         raise ConfigError("Project id must be a non-empty string")
@@ -202,6 +203,8 @@ def update_project(
         risks=risks,
         rules=rules,
     )
+    if last_handoff_at is not None:
+        project_raw["last_handoff_at"] = last_handoff_at
 
     project = Project.from_yaml(project_id, project_raw)
     _write_yaml_file(projects_path, {"projects": projects_raw})
