@@ -157,7 +157,7 @@ def test_ui_homepage_renders_action_board_controls_and_action_list(tmp_path: Pat
     assert "official" in body
     assert "git@example.com:demo/demo.git" in body
     assert 'class=\'property-list\'' not in body
-    assert "高级设置" in body
+    assert 'class="more-fields"' in body
     assert 'class="quick-form"' not in body
     assert "search.addEventListener(\"input\"" in body
     assert "fetch(root.dataset.endpoint" in body
